@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Blog - Jake Wang{% endblock %}
+
+{% block content %}
+<section class="intro">
+    <h1>Blog</h1>
+    <p class="subtitle">Learning Notes on Data Science and Python.</p>
+</section>
+
+<section class="post-list">
+    {% for post in posts %}
+    <article class="post-preview">
+        <span class="post-date">{{ post.meta.date|strftime }}</span>
+        <h3><a href="{{ url_for('post', path=post.path) }}">{{ post.meta.title }}</a></h3>
+    </article>
+    {% endfor %}
+</section>
+{% endblock %}

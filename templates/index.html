@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<section class="hero">
+    <h1>Hi, I'm Jake.</h1>
+    <p class="subtitle">Finance Analyst & Data Analyst | Multinational Parking Operations</p>
+</section>
+
+<section class="content-block">
+    <h2>👨‍💻 About Me</h2>
+    <p>
+        I’m a Financial & Data Analyst at a Japanese multinational parking operations firm, currently pursuing a part-time Master’s degree in Data Science. I am driven by uncovering business value behind data and building Python-based automation and predictive models.
+    </p>
+    <p>
+        Operating within a rigorous cross-cultural business environment, my work focuses on operational and financial performance. I integrate data from multiple sources to streamline reporting workflows and deliver high-precision insights directly to executive leadership and the board. I enjoy bridging business needs with scalable analytics processes—from data preparation to dashboards and forecasting—to clarify revenue, costs, and key drivers.
+    </p>
+    <p>
+        I’m continuously sharpening my skills in data engineering and statistical modeling, and I’m excited about applying them to solve real-world business problems.
+    </p>
+</section>
+
+<section class="content-block">
+    <h2>📝 Recent Posts</h2>
+    {% for post in posts %}
+    <div class="post-preview">
+        <span class="post-date">{{ post.meta.date|strftime }}</span>
+        <h3><a href="{{ url_for('post', path=post.path) }}">{{ post.meta.title }}</a></h3>
+    </div>
+    {% endfor %}
+</section>
+{% endblock %}

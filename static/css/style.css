@@ -1,0 +1,408 @@
+/* =========================================
+   1. CSS Variables Definition (Theming)
+   ========================================= */
+:root {
+    /* Light Mode (Default) */
+    --bg-color: #ffffff;
+    --text-color: #333333;
+    --heading-color: #222222;
+    --link-color: #d35400;      /* Coding Horror 經典橘 */
+    --link-hover: #e67e22;
+    --border-color: #eeeeee;    /* 分隔線顏色 */
+    --code-bg: #f6f8fa;         /* 程式碼區塊背景 */
+    --code-border: #e1e4e8;
+    --muted-color: #666666;     /* 副標題、引用文字 */
+    --meta-color: #999999;      /* 日期、Footer 文字 */
+}
+
+[data-theme="dark"] {
+    /* Dark Mode Overrides */
+    --bg-color: #1a1a1a;        /* 深灰背景 */
+    --text-color: #dddddd;      /* 淺灰文字，閱讀不刺眼 */
+    --heading-color: #ffffff;   /* 標題純白 */
+    --link-color: #e67e22;      /* 在暗色中更亮一點的橘 */
+    --link-hover: #f39c12;
+    --border-color: #444444;    /* 深色分隔線 */
+    --code-bg: #2d2d2d;         /* 深色程式碼區塊 */
+    --code-border: #444444;
+    --muted-color: #aaaaaa;     /* 暗模式下的副標題要亮一點才看得到 */
+    --meta-color: #888888;
+}
+
+/* =========================================
+   2. Reset & Base Styles
+   ========================================= */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.7;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    /* 關鍵：讓顏色切換有滑順的過場動畫，而不是瞬間閃爍 */
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+a {
+    color: var(--link-color);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+/* =========================================
+   3. Layout
+   ========================================= */
+.container {
+    max-width: 740px; /* 經典部落格寬度，閱讀體驗最佳 */
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+/* =========================================
+   4. Header & Navigation
+   ========================================= */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 20px;
+    margin-bottom: 50px;
+}
+
+.logo a {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--heading-color);
+    text-decoration: none;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+}
+
+nav a {
+    margin-left: 20px;
+    color: var(--muted-color);
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+nav a:hover {
+    color: var(--link-color);
+}
+
+/* 切換按鈕樣式 */
+#theme-toggle {
+    margin-left: 20px;
+    padding: 5px;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+#theme-toggle:hover {
+    background-color: var(--border-color);
+}
+
+/* =========================================
+   5. Typography (Global)
+   ========================================= */
+h1, h2, h3 {
+    color: var(--heading-color);
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+h1 {
+    font-size: 2.8rem;
+    margin-bottom: 10px;
+    letter-spacing: -1px;
+}
+
+h2 {
+    font-size: 1.8rem;
+    margin-top: 50px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+h3 {
+    font-size: 1.4rem;
+    margin-top: 30px;
+    margin-bottom: 15px;
+}
+
+p {
+    margin-bottom: 1.5em;
+    font-size: 1.05rem;
+}
+
+.subtitle {
+    font-size: 1.3rem;
+    color: var(--muted-color);
+    font-weight: 300;
+    margin-top: -5px;
+    margin-bottom: 30px;
+}
+
+/* =========================================
+   6. Components (About Page)
+   ========================================= */
+.skill-list {
+    list-style: none;
+    padding: 0;
+}
+
+.skill-list li {
+    margin-bottom: 10px;
+    padding-left: 0;
+}
+
+.project-item {
+    margin-bottom: 40px;
+}
+
+/* =========================================
+   7. Blog & Markdown Styles
+   ========================================= */
+
+/* 文章列表 (Blog Index) */
+.post-preview {
+    display: flex;
+    flex-direction: row;
+    align-items: end;
+    gap: 1rem;
+    padding: 8px 0;
+}
+
+.post-preview h3 {
+    margin: 0;
+    font-size: 16px;
+    border: none;
+    line-height: 1.6;
+    
+}
+
+.post-preview h3 a {
+    color: var(--heading-color);
+    font-weight: normal;
+}
+
+.post-preview h3 a:hover {
+    color: var(--link-color);
+}
+
+.post-date {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--meta-color);
+    display: block;
+    font-family: monospace; /* 讓日期有點數據感 */
+}
+
+/* 文章內頁 (Single Post) */
+.post-header {
+    margin-bottom: 40px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 20px;
+}
+
+.post-meta {
+    color: var(--meta-color);
+    font-size: 0.9rem;
+    margin-top: 10px;
+}
+
+/* Markdown 內容增強 */
+.entry h2 { margin-top: 50px; }
+
+.entry blockquote {
+    border-left: 4px solid var(--border-color);
+    padding-left: 15px;
+    margin-left: 0;
+    color: var(--muted-color);
+    font-style: italic;
+}
+
+.entry ul, .entry ol {
+    margin-bottom: 1.5em;
+    padding-left: 1.5em;
+}
+
+.entry li {
+    margin-bottom: 0.5em;
+}
+
+/* 圖片自適應 */
+.entry img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    display: block;
+    margin: 30px auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+
+/* 表格樣式 (Table) - 分析師必備 */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1.5em;
+}
+th, td {
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    text-align: left;
+}
+th {
+    background-color: var(--code-bg); /* 表頭稍微灰一點 */
+    font-weight: 600;
+    color: var(--heading-color);
+}
+
+.back-link {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+/* =========================================
+   8. Footer
+   ========================================= */
+footer {
+    margin-top: 100px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 30px;
+    color: var(--meta-color);
+    font-size: 0.9rem;
+    text-align: center;
+    padding-bottom: 40px;
+}
+
+/* --- Search Form Styles --- */
+/* 搜尋遮罩背景 */
+.search-modal {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.5); /* 半透明黑底 */
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* 靠上對齊 */
+    padding-top: 100px;
+}
+
+/* 白色搜尋框本體 */
+.search-content {
+    background: var(--bg-color);
+    width: 600px;
+    max-width: 90%;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+/* 輸入框區域 */
+.search-header {
+    display: flex;
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#search-input {
+    flex-grow: 1;
+    font-size: 1.2rem;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-color);
+}
+
+.close-btn {
+    background: none; border: none;
+    font-size: 1.5rem; cursor: pointer;
+    color: var(--text-color);
+}
+
+/* 結果列表 */
+.search-results-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.search-result-item {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    display: block;
+    text-decoration: none;
+}
+.search-result-item:hover {
+    background-color: var(--code-bg); /* 滑鼠移過去變色 */
+}
+.search-result-title {
+    font-weight: bold;
+    color: var(--heading-color);
+    display: block;
+}
+.search-result-date {
+    font-size: 0.8rem;
+    color: var(--meta-color);
+}
+/* Code block base */
+.entry pre {
+  position: relative;                 /* 讓 ::before 定位用 */
+  background: var(--code-bg);
+  color: var(--text-color);
+  padding: 2.5rem 20px 15px;          /* 上方留空給語言標籤 */
+  border-radius: 6px;
+  overflow-x: auto;
+  border: 1px solid var(--code-border);
+  margin: 0 0 1.5em;
+}
+
+/* Language label */
+.entry pre::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 0.6rem;
+  left: 1rem;
+  font-size: 0.75rem;
+  opacity: 0.7;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Avoid extra inner spacing if highlighter injects */
+.entry pre code {
+  font-family: 'Fira Code', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.95em;
+  background: transparent;
+  padding: 0;
+  border: 0;
+}
+
+/* Inline code */
+.entry p code,
+.entry li code {
+  background-color: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--code-border);
+  font-family: 'Fira Code', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.95em;
+}
+
+/* If you enabled codehilite (optional but common) */
+.entry .codehilite pre {
+  margin: 0 0 1.5em; /* 防止 codehilite 外層影響間距 */
+}

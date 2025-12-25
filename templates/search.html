@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Search: {{ query }} - Jake Wang{% endblock %}
+
+{% block content %}
+<section class="intro">
+    <h1>Search Results</h1>
+    <p class="subtitle">
+        關鍵字 "<strong>{{ query }}</strong>" 的搜尋結果：
+        {% if posts|length == 0 %}
+            <span style="color: red;">沒有找到相關文章。</span>
+        {% else %}
+            共找到 {{ posts|length }} 篇。
+        {% endif %}
+    </p>
+</section>
+
+<section class="post-list">
+    {% for post in posts %}
+    <article class="post-preview">
+        <span class="post-date">{{ post.meta.date|strftime }}</span>
+        <h3><a href="{{ url_for('post', path=post.path) }}">{{ post.meta.title }}</a></h3>
+        
+        {% if post.meta.description %}
+        <p>{{ post.meta.description }}</p>
+        {% endif %}
+    </article>
+    {% endfor %}
+</section>
+
+<div class="back-link">
+    <a href="{{ url_for('blog') }}">← Back to All Posts</a>
+</div>
+{% endblock %}

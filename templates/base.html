@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <title>{% block title %}Jake Wang{% endblock %}</title>
+    <meta name="description" content="{% block description %}Jake Wang's personal portfolio and blog about Data Science, Python, and Financial Modeling.{% endblock %}">
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <button id="theme-toggle" style="background:none; border:none; cursor:pointer; font-size:1.5rem; margin-left:10px; margin-right: 10px;" title="Toggle Theme">
+                    ☀️
+                </button>
+                <a href="/">Jake Wang</a>
+            </div>
+            <nav>
+                <a href="{{ url_for('blog') }}">Blog</a>
+
+                <button onclick="openSearch()" style="background:none; border:none; cursor:pointer; font-size:1.2rem; margin-left:15px;" title="Search">
+                    🔍
+                </button>
+            </nav>
+        </header>
+        
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer>
+            <p>&copy; 2025 Jake Wang</p>
+        </footer>
+    </div>
+
+    <div id="search-modal" class="search-modal" style="display: none;">
+        <div class="search-content">
+            <div class="search-header">
+                <input type="text" id="search-input" placeholder="Type to search..." autocomplete="off">
+                <button onclick="closeSearch()" class="close-btn">×</button>
+            </div>
+            <div id="search-results" class="search-results-list"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- Part A: 暗黑模式邏輯 ---
+        const toggleButton = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+        
+        const currentTheme = localStorage.getItem('theme') ? localStorage.getItem('theme') : null;
+        
+        if (currentTheme) {
+            htmlElement.setAttribute('data-theme', currentTheme);
+            if (currentTheme === 'dark') toggleButton.textContent = '🌙';
+        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            htmlElement.setAttribute('data-theme', 'dark');
+            toggleButton.textContent = '🌙';
+        }
+
+        toggleButton.addEventListener('click', () => {
+            if (htmlElement.getAttribute('data-theme') === 'dark') {
+                htmlElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+                toggleButton.textContent = '☀️';
+            } else {
+                htmlElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+                toggleButton.textContent = '🌙';
+            }
+        });
+
+        // --- Part B: 即時搜尋邏輯 (Client-Side Search) ---
+        let allPosts = []; // 用來暫存從 API 抓下來的文章資料
+
+        async function openSearch() {
+            // 顯示遮罩
+            document.getElementById('search-modal').style.display = 'flex';
+            // 讓游標自動跳進輸入框
+            document.getElementById('search-input').focus();
+            
+            // 如果還沒抓過資料，才去呼叫後端 API
+            if (allPosts.length === 0) {
+                try {
+                    // 這裡使用 Jinja2 產生的 URL，記得要用引號包起來
+                    const response = await fetch("{{ url_for('get_posts_json') }}");
+                    allPosts = await response.json();
+                } catch (error) {
+                    console.error("無法取得文章資料:", error);
+                }
+            }
+        }
+
+        function closeSearch() {
+            document.getElementById('search-modal').style.display = 'none';
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-results').innerHTML = '';
+        }
+
+        // 監聽輸入框的打字事件
+        document.getElementById('search-input').addEventListener('input', function(e) {
+            const term = e.target.value.toLowerCase();
+            const resultsContainer = document.getElementById('search-results');
+            resultsContainer.innerHTML = ''; // 清空舊結果
+
+            if (term.length < 1) return; // 至少打1個字才搜尋
+
+            // 過濾資料 (比對標題)
+            const filteredPosts = allPosts.filter(post => 
+                post.title.toLowerCase().includes(term) || 
+                post.date.includes(term) ||
+                (post.description && post.description.toLowerCase().includes(term)) ||
+                (post.body && post.body.toLowerCase().includes(term))
+            );
+
+            // 顯示結果
+            if (filteredPosts.length === 0) {
+                resultsContainer.innerHTML = '<div style="padding:15px; color:#999;">No results found</div>';
+            } else {
+                filteredPosts.forEach(post => {
+                    const item = document.createElement('a');
+                    item.href = post.url; // 這裡的 url 是從 JSON 來的，不需要 url_for
+                    item.className = 'search-result-item';
+                    let displayText = post.title;
+                    let subText = post.date;
+                    if (post.description && post.description.toLowerCase().includes(term)) {
+                        subText += ` - ${post.description.substring(0, 50)}...`;
+                    }
+
+                    item.innerHTML = `
+                        <span class="search-result-title">${post.title}</span>
+                        <span class="search-result-date">${post.date}</span>
+                    `;
+                    resultsContainer.appendChild(item);
+                });
+            }
+        });
+
+        // 點擊半透明黑底背景時，也要關閉視窗
+        document.getElementById('search-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeSearch();
+        });
+        
+        // 按下 ESC 鍵關閉視窗
+        document.addEventListener('keydown', function(e) {
+            if (e.key === "Escape") closeSearch();
+        });
+
+        document.getElementById('search-input').addEventListener('keypress', function(e) {
+            // 檢查按下的是否為 Enter 鍵 (Key Code 13)
+            if (e.key === 'Enter') {
+                e.preventDefault(); // 防止某些瀏覽器的預設行為
+                
+                const term = this.value; // 取得輸入框的值
+                
+                if (term.length > 0) {
+                    // 使用 JavaScript 進行頁面跳轉
+                    // encodeURIComponent 會處理空白、& 符號等特殊字元，避免網址壞掉
+                    window.location.href = "{{ url_for('search') }}?q=" + encodeURIComponent(term);
+                }
+            }
+        });
+
+        document.querySelectorAll('pre code').forEach(code => {
+            const match = code.className.match(/language-(\w+)/);
+            if (!match) return;
+
+            const lang = match[1];
+            const pre = code.closest('pre');
+            pre.setAttribute('data-lang', lang.toUpperCase());
+        });
+    </script>
+</body>
+</html>

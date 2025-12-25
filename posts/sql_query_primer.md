@@ -5,76 +5,67 @@ description: A practical primer on SQL SELECT statements, illustrated with real-
 ## SELECT
 ```sql
 SELECT license_plate, entry_time
-FROM entry_tickets;
+FROM parking_history;
 ```
 
-The SELECT clause determines which columns you want to retrieve from the database. While you can use * to select everything, explicitly listing the columns makes data processing more efficient and easier to read.
-
-This code retrieves only the license_plate and entry_time from the entry_tickets table, ignoring other unnecessary information so you can quickly monitor the status of vehicles in the lot.
+The SELECT clause determines which columns you want to retrieve from the database. While you can use * to select everything, explicitly listing the columns is usually easier to read and can reduce unnecessary data processing.
 
 ## Column Aliases
 
 ```sql
-SELECT ticket_id,
+SELECT parking_id,
        parked_hours * 40 AS estimated_fee,
        'Standard Rate' AS rate_type
-FROM parking_records;
+FROM parking_history;
 ```
 
-When you perform calculations on columns (like addition or multiplication), the resulting column name is often the formula itself, which is hard to read. Using the AS keyword allows you to give that result a meaningful name.
+When you perform calculations (or create constant fields), the default output name may be unclear. Using AS lets you assign meaningful column names to improve readability.
 
 ## Removing Duplicates
 
 ```sql
-SELECT DISTINCT car_brand
-FROM vehicle_log;
+SELECT DISTINCT parking_type
+FROM parking_history;
 ```
-The DISTINCT keyword is used to remove duplicate entries from the result set, ensuring that every row returned is unique.
-
-The database checks all car_brand entries in the vehicle_log. It filters out duplicates (e.g., if "Toyota" appears 50 times) and returns "Toyota" only once. The result is a clean list of unique brands.
+DISTINCT removes duplicate rows from the result set (based on the selected columns), ensuring each returned row is unique.
 
 ## The FROM Clause & Table Aliases
 
 ```sql
-SELECT f.floor_name, s.spot_number, s.status
-FROM floors f
-INNER JOIN parking_spots s
-ON f.floor_id = s.floor_id;
+SELECT ph.station_code, ph.station_name, py.amount_received
+FROM parking_history ph
+JOIN payment_history py
+  ON py.parking_id = ph.parking_id;
 ```
 
-The FROM clause specifies the source of the data. Giving tables a short "Alias" makes the code cleaner, especially when joining multiple tables, as it clearly indicates which table a column belongs to.
+The FROM clause defines the base table(s) the query reads from. Table aliases make queries shorter and improve readability, and they help disambiguate column names when joining multiple tables.
 
-We alias floors as f and parking_spots as s. This makes selecting f.floor_name and s.spot_number very concise and makes it easy to distinguish where each column comes from.
 
 ## The WHERE Clause
 
 ```sql
-SELECT license_plate, spot_type, parked_duration
-FROM current_parking
-WHERE (spot_type = 'Disability' AND has_permit = 0)
+SELECT license_plate, parking_type, parked_duration
+FROM parking_history
+WHERE (parking_type = 'monthly' AND is_eletric = 0)
    OR (parked_duration > 24);
 ```
 
-The WHERE clause acts as a filter. Only data that meets the specified conditions is returned. You can combine complex conditions using AND and OR.
-
-Parentheses ensure the logic is correct: the first part ( ... AND ... ) targets illegal use of disability spots, while the second part OR (...) captures all vehicles exceeding the time limit. Both types of vehicles will appear in the list.
+The WHERE clause filters rows based on conditions. Parentheses ensure the intended logic: the first group selects monthly users who are not electric vehicles, and the second condition includes any vehicle parked longer than 24. Rows matching either group will be returned.
 
 ## The ORDER BY Clause
 
 ```sql
 SELECT license_plate, entry_time
-FROM entry_tickets
+FROM parking_history
 ORDER BY entry_time ASC, license_plate ASC;
 ```
 
-ORDER BY determines the sequence of the data presentation. ASC sorts from smallest to largest (default), and DESC sorts from largest to smallest.
-
-Using entry_time ASC puts the vehicles that entered earliest (parked the longest) at the top. If two cars entered at the exact same second, the license_plate sort decides their order.
+ORDER BY controls the presentation order of the result set. Using entry_time ASC puts the earliest entry times at the top. If multiple rows share the same entry_time, license_plate ASC acts as a tiebreaker.
 
 ## Summary
 
-1. SELECT: Decides which information to pull from the surveillance feed (e.g., license plates, time), and uses Aliases to label columns clearly (e.g., "Estimated Fee").
-2. DISTINCT: Filters out repetitive noise, such as getting a list of unique car brands without repeating every single car.
-3. FROM: Specifies which logbook (Table) to read from, using Aliases to simplify names when cross-referencing floor plans and spot lists.
-4. WHERE: The most crucial filter, allowing you to pinpoint "violations" or "specific zones" and exclude irrelevant data.
-5. ORDER BY: Organizes your final report, whether you need to sort by entry time or fee amount, ensuring the data is presented logically.
+1. SELECT: Chooses which columns to return from the data source (e.g., license plate, entry time). Column aliases can be used to give the output clearer, more meaningful labels (e.g., "Estimated Fee").
+2. DISTINCT: Removes duplicate rows from the result set, such as retrieving a list of unique car brands without repeating the same brand multiple times.
+3. FROM: Defines the base table(s) the query reads from. Table aliases simplify references, especially when joining multiple tables or cross-referencing related datasets.
+4. WHERE: Filters rows based on conditions, allowing you to focus on specific cases (e.g., violations or zones) while excluding irrelevant records.
+5. ORDER BY: Controls the presentation order of the final result set, such as sorting by entry time or fee amount, ensuring the data is displayed in a logical sequence.

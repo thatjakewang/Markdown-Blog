@@ -27,5 +27,8 @@
         <h3><a href="{{ url_for('post', path=post.path) }}">{{ post.meta.title }}</a></h3>
     </div>
     {% endfor %}
+    <div class="see-more">
+        <a href="{{ url_for('blog') }}">→All Posts</a>
+    </div>
 </section>
 {% endblock %}

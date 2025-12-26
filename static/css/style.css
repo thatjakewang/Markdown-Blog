@@ -275,6 +275,10 @@ th {
     border-top: 1px solid var(--border-color);
     font-size: 0.9rem;
 }
+.see-more {
+    font-size: 0.9rem;
+    padding-top: 20px;
+}
 
 /* =========================================
    8. Footer

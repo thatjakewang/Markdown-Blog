@@ -1,4 +1,4 @@
-title: "SQL Analytic Functions: The Power of OVER()"
+title: "SQL Analytic Functions"
 date: 2026-01-08
 description: "Use window functions to rank stations, compute percentages, and analyze time series without collapsing rows."
 

@@ -1,6 +1,6 @@
 title: "SQL Grouping and Aggregates"
 date: 2025-12-29
-description: Master the art of summarizing data. Learn how to group parking records, calculate averages and totals, and filter grouped results using GROUP BY and HAVING.
+description: Quick notes on GROUP BY, aggregates (COUNT, AVG, etc.), HAVING, and ROLLUP. Summarize parking data by station, hour, etc.
 
 ## Basic Grouping (GROUP BY)
 
@@ -10,9 +10,9 @@ FROM parking_history
 GROUP BY station_code
 ORDER BY total_entries DESC;
 ```
-
-Databases store data row-by-row, but analysis often needs summaries by category. GROUP BY collapses rows that share the same station_code into a single group. COUNT(*) then counts how many records fall into each group, helping you quickly identify the busiest stations.
-
+GROUP BY groups rows by station_code.
+COUNT(*) → how many entries per station.
+Result: one row per station, sorted by busiest first.
 ## Aggregate Functions
 
 ```sql
@@ -25,21 +25,21 @@ FROM parking_history
 WHERE exit_time IS NOT NULL
 GROUP BY station_code;
 ```
-Aggregate functions compute a single value per group:
-- COUNT() counts rows.
-- AVG() calculates an average (e.g., average parking duration).
-- MAX() / MIN() find the highest or lowest value.
+Per group:
+- COUNT(*) → row count
+- AVG() → average (e.g., parking time)
+- MAX/MIN → highest/lowest value
+Use WHERE first → filter data before grouping.
 
-This helps interpret behavior patterns: longer average durations may indicate commuter/residential usage, while shorter durations suggest quick stops.
-
-## Multicolumn Grouping
+## Group by Multiple Columns
 ```sql
 SELECT city, station_type, COUNT(*) AS station_count
 FROM management_table
 GROUP BY city, station_type
 ORDER BY city, station_type;
 ```
-You can group by multiple dimensions simultaneously. This works like a Pivot Table: the database groups by city, then within each city groups by station_type, producing a structured summary such as “Taipei - Indoor” vs “Taipei - Outdoor”.
+GROUP BY city, THEN station_type.
+Like a pivot: "Taipei - Indoor" vs "Taipei - Outdoor".
 
 ## Grouping via Expressions
 
@@ -50,34 +50,33 @@ FROM parking_history
 GROUP BY HOUR(entry_time)
 ORDER BY entry_hour;
 ```
-You can group by expressions (function results), not just raw columns. Here, HOUR(entry_time) creates hourly buckets (0–23) so you can analyze daily traffic trends without adding an extra “hour” column.
-
-## Generating Rollups (Totals/Subtotals)
-
+GROUP BY HOUR(entry_time) → hourly buckets (0-23).
+Analyze trends without extra columns.
+## Add Totals (ROLLUP)
 ```sql
 SELECT payment_method, COUNT(*) AS tx_count
 FROM payment_history
 GROUP BY payment_method WITH ROLLUP;
 ```
+WITH ROLLUP → adds subtotal rows + grand total (NULL row).
+Quick reports without extra queries.
 
-WITH ROLLUP adds extra rows for subtotals and a grand total. In the result, a row where payment_method is NULL represents the grand total across all payment methods. This is useful for reporting without extra SQL or Excel work.
-
-## Group Filter Conditions (HAVING)
+## Filter Groups (HAVING)
 ```sql
 SELECT station_code, COUNT(*) AS total_visits
 FROM parking_history
 GROUP BY station_code
 HAVING COUNT(*) > 1000;
 ```
-
-A common mistake is confusing WHERE and HAVING:
-- WHERE filters rows before grouping.
-- HAVING filters groups after aggregation.
-
-Since COUNT(*) is an aggregated result, you must use HAVING to filter for stations with more than 1,000 visits.
+HAVING filters AFTER grouping (e.g., stations with >1000 visits).
+WHERE filters BEFORE (raw rows).
+Can't use HAVING on non-aggregates.
 
 ## Summary
-1. GROUP BY is the core: it collapses detailed rows into summary categories.
-2. Aggregates provide insights: functions like AVG, SUM, MAX turn raw data into KPIs.
-3. WHERE vs HAVING: filter raw rows with WHERE, filter aggregated groups with HAVING.
-4. ROLLUP for reporting: WITH ROLLUP automatically adds totals and subtotals.
+- GROUP BY: Group rows by column(s) or expression → one row per group
+- Aggregates: COUNT(*), AVG(), SUM(), MAX(), MIN() → compute per group
+- Multi-group: GROUP BY col1, col2 → nested categories
+- ROLLUP: Add totals/subtotals automatically
+- HAVING: Filter groups (after GROUP BY) → use aggregates here
+- WHERE: Filter rows (before GROUP BY) → no aggregates
+- ORDER BY: Sort the final grouped results

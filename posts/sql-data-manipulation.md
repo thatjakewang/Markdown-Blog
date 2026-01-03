@@ -1,17 +1,18 @@
-title: "SQL Data Manipulation: Strings, Dates, and Math"
+title: SQL Data Manipulation
 date: 2025-12-28
-description: Learn how to manipulate data in SQL. Covers string functions for masking, date math for duration analysis, and numeric functions for fee calculation, using parking management examples.
+description: Quick notes on SQL string, date, and math functions. Examples: mask plates, calculate fees, count by hour.
 
-## String Manipulation (Masking for Privacy)
+## Mask License Plate (Privacy)
 
 ```sql
 SELECT license_plate,
        CONCAT(SUBSTRING(license_plate, 1, 3), REPEAT('*', 4)) AS masked_plate
 FROM parking_history;
 ```
-This query demonstrates privacy-friendly formatting. It keeps only the first three characters of license_plate using SUBSTRING, then uses CONCAT plus REPEAT to append asterisks. This helps analysts identify patterns (e.g., region or plate type) without exposing the full license plate number.
+Keep first 3 characters → add ****.
+Good for reports: hide full plate but still see prefix (region/type).
 
-## Temporal Manipulation (Duration + Fee Calculation)
+## Calculate Parking Duration & Fee
 ```sql
 SELECT license_plate,
        TIMESTAMPDIFF(MINUTE, entry_time, exit_time) AS total_minutes,
@@ -19,13 +20,13 @@ SELECT license_plate,
 FROM parking_history
 WHERE exit_time IS NOT NULL;
 ```
-This query calculates parking fees using a “round up to the next hour” rule:
-1. TIMESTAMPDIFF calculates the total duration in minutes.
-2. Divide by 60.0 to convert minutes to hours (e.g., 75 mins → 1.25 hours).
-3. CEIL rounds up to the next whole hour (1.25 → 2).
-4. Multiply by the hourly rate (40) to get the final fee.
-
-## Timestamp Granularity (Hourly Traffic Breakdown)
+Steps:
+1. TIMESTAMPDIFF → minutes parked
+2. Divide by 60.0 → hours (decimal)
+3. CEIL → round up to next full hour
+4. 40 → fee (hourly rate)
+Common "ceiling billing" rule.
+## Count Entries by Hour
 ```sql
 SELECT HOUR(entry_time) AS entry_hour,
        COUNT(*) AS vehicle_count
@@ -33,18 +34,23 @@ FROM parking_history
 GROUP BY HOUR(entry_time)
 ORDER BY vehicle_count DESC;
 ```
-This query breaks down traffic by hour. HOUR(entry_time) extracts the hour component (0–23), and COUNT(*) aggregates how many vehicles entered in each hour. Sorting by vehicle_count helps identify peak entry times.
+HOUR() gets hour (0-23).
+GROUP BY + COUNT → how many cars enter each hour.
+ORDER DESC → see peak hours first.
 
-## Conversion Functions (Type-Safe Formatting)
+## Safe String Concat (CAST)
 ```sql
 SELECT station_code,
        CONCAT('Station: ', station_name, ' - Opened on ', CAST(open_date AS CHAR)) AS info_text
 FROM management_table;
 ```
-CAST converts open_date into a string so it can be safely concatenated with other text. Some databases may perform implicit conversion, but using CAST makes the query more reliable and avoids unexpected type errors.
+CAST(date AS CHAR) → turn date into text safely.
+Prevents type errors when mixing text + date.
 
 ## Summary
-- Privacy & formatting: SUBSTRING and CONCAT can sanitize and format sensitive text fields for reporting.
-- Duration & fee rules: TIMESTAMPDIFF + CEIL are a practical combination for time-based billing l
-- Granularity: HOUR() helps transform timestamps into analysis-friendly buckets (e.g., peak hours).
-- Type safety: CAST ensures data types align correctly during string assembly.
+- Mask text: SUBSTRING + CONCAT + REPEAT('*')
+- Duration: TIMESTAMPDIFF(MINUTE, start, end)
+- Round up: CEIL(value) for ceiling billing
+- Extract hour: HOUR(timestamp) → good for hourly stats
+- Safe concat: CAST(non-text AS CHAR) before mixing with strings
+- Other common: FLOOR (round down), ROUND (normal round)

@@ -1,32 +1,36 @@
-title: "SQL Indexes and Constraints"
+title: SQL Indexes and Constraints
 date: 2026-01-05
-description: "Improve performance and data quality with indexes and foreign keys in a parking system."
+description: Quick notes on indexes and constraints. Speed up queries, enforce data rules in parking system.
 
-## Creating Indexes
+## Basic Index (Faster Lookups)
 ```sql
 ALTER TABLE parking_history
 ADD INDEX idx_license_plate (license_plate);
 ```
-Indexes speed up lookups by avoiding full table scans. With an index on license_plate, queries like WHERE license_plate = 'ABC-1234' become much faster. Trade-off: indexes improve reads (SELECT) but add overhead to writes (INSERT/UPDATE).
+Index → speeds up WHERE license_plate = 'ABC-1234'
+No more full table scans.
+Trade-off: faster SELECT, slower INSERT/UPDATE.
 
-## Unique Indexes
+## Unique Index (No Duplicates + Speed)
 
 ```sql
 ALTER TABLE management_table
 ADD UNIQUE idx_unique_station_code (station_code);
 ```
-A unique index both speeds up lookups and enforces a rule: no duplicate station_code. If someone inserts an existing code (e.g., ST001), the database rejects it.
+UNIQUE → blocks duplicate station_code inserts.
+Also fast for lookups on station_code.
 
-## Multicolumn Indexes
+## Multi-Column Index
 
 ```sql
 ALTER TABLE management_table
 ADD INDEX idx_city_area (city, area);
 ```
+Good for WHERE city = 'Taipei' AND area = 'Xinyi'
+Order matters: supports city alone, or city+area.
+Rarely helps area alone.
 
-Multicolumn indexes help common filters like city + area. Column order matters (leftmost prefix): this index supports WHERE city = ... and WHERE city = ... AND area = ..., but usually not WHERE area = ... alone.
-
-## Foreign Key Constraints
+## Foreign Key (Referential Integrity)
 
 ```sql
 ALTER TABLE parking_history
@@ -35,11 +39,10 @@ FOREIGN KEY (station_code)
 REFERENCES management_table (station_code)
 ON DELETE RESTRICT;
 ```
-
-Foreign keys enforce referential integrity:
-
-- You can’t insert a parking record with a missing station_code.
-- With ON DELETE RESTRICT, you can’t delete a station that still has history rows.
+Foreign keys rules:
+- Can't insert parking record with unknown station_code
+- ON DELETE RESTRICT: can't delete station if parking records exist
+Prevents orphan/invalid data.
 
 ## Cascading Updates
 
@@ -50,12 +53,16 @@ FOREIGN KEY (station_code)
 REFERENCES management_table (station_code)
 ON UPDATE CASCADE;
 ```
-
-ON UPDATE CASCADE propagates station code changes (e.g., ST001 → TP-001) from management_table to all matching rows in parking_history, keeping data consistent without manual updates.
+If station_code changes in management_table → auto-update all parking_history rows.
+Saves manual work, keeps consistency.
+Use carefully (big data → many rows affected).
 
 ## Summary
-
-- Index for speed: add indexes to columns used in WHERE/JOIN (plates, dates).
-- Constrain for quality: use primary/unique keys to block duplicates.
-- Link with FKs: prevent invalid references across tables.
-- Use CASCADE carefully: it can simplify large updates.
+- INDEX: Speed WHERE/JOIN columns (plates, codes, dates)
+- UNIQUE INDEX: Prevent duplicates + fast lookup
+- Multi-column: Match common filter order (leftmost first)
+- FOREIGN KEY: Link tables → no invalid references
+- ON DELETE RESTRICT: Safe default (block delete if used)
+- ON UPDATE/DELETE CASCADE: Auto-propagate changes (use wisely)
+- PRIMARY KEY: Auto unique + index (every table needs one)
+- Check existing: SHOW INDEX FROM table_name;

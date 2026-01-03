@@ -1,8 +1,8 @@
 title: SQL Conditional Logic
 date: 2025-12-31
-description: Master the CASE expression in SQL. Learn how to categorize data dynamically, pivot result sets from rows to columns, and handle edge cases like division-by-zero in parking data analysis.
+description: Quick notes on CASE. Categorize data, pivot rows to columns, safe calculations, conditional updates.
 
-## Searched CASE Expressions
+## Searched CASE (Ranges & Complex Rules)
 ```sql
 SELECT ticket_id,
        TIMESTAMPDIFF(HOUR, entry_time, exit_time) AS duration_hours,
@@ -14,10 +14,10 @@ SELECT ticket_id,
 FROM parking_history
 WHERE exit_time IS NOT NULL;
 ```
+Searched CASE → check conditions freely (ranges, >, <, AND/OR).
+Here: tag parking as Short/Medium/Long based on hours.
 
-A searched CASE supports ranges and complex conditions. Here, we compute parking duration and dynamically assign a category (Short-term, Medium, Long-term) to each record. This enables segmentation without altering the table schema.
-
-## Simple CASE Expressions
+## Simple CASE (Exact Match Mapping)
 
 ```sql
 SELECT station_name,
@@ -29,10 +29,10 @@ SELECT station_name,
        END AS type_description
 FROM management_table;
 ```
+Simple CASE → match exact values only.
+Great for turning codes (1,2,3) into readable text.
 
-A simple CASE is ideal for direct equality mapping. It translates system codes (1, 2, 3) into human-readable labels directly in the query output.
-
-## Result Set Transformations (Pivoting)
+## Pivot with CASE (Rows → Columns)
 
 ```sql
 SELECT station_code,
@@ -42,9 +42,10 @@ SELECT station_code,
 FROM payment_history
 GROUP BY station_code;
 ```
-One of the most practical uses of CASE is pivoting. By combining SUM with CASE, you can count categories into separate columns in a single row—turning long-format transaction logs into dashboard-ready summaries.
+SUM(CASE ...) → count each category in separate column.
+Turns long list into wide summary (perfect for dashboards).
 
-## Handling Division-by-Zero (When Zero-Activity Rows Exist)
+## Safe Division (Avoid Divide-by-Zero)
 
 ```sql
 SELECT mt.station_name,
@@ -59,13 +60,11 @@ LEFT JOIN payment_history pay
   ON mt.station_code = pay.station_code
 GROUP BY mt.station_name;
 ```
-Division-by-zero usually happens when your report includes entities with zero activity (e.g., stations with no payments). Using a LEFT JOIN keeps all stations, and the CASE expression protects the division:
-- If txn_count = 0, return 0
-- Otherwise, compute total_revenue / txn_count
+LEFT JOIN → keep stations with zero payments.
+CASE → return 0 instead of error when txn_count = 0.
+Clean, safe KPI reports.
 
-This makes KPI outputs stable for reporting.
-
-## Conditional Updates
+## Conditional UPDATE
 
 ```sql
 UPDATE management_table
@@ -75,12 +74,14 @@ SET base_rate = CASE
     ELSE base_rate
 END;
 ```
-CASE can also drive bulk updates with different rules in a single statement. Here, stations in Downtown get a 10% increase, Suburb gets a 5% discount, and all other areas remain unchanged via ELSE base_rate.
-
-Practical note: in production, consider adding a WHERE clause (or running a SELECT preview first) to avoid unintended full-table updates.
+One UPDATE → apply different rules by area.
+Tip: add WHERE or test with SELECT first in production.
 
 ## Summary
-- SQL’s IF-THEN: CASE brings conditional logic into declarative queries.
-- Two flavors: use searched CASE for ranges/complex rules, and simple CASE for direct mapping.
-- Pivoting reports: SUM(CASE ...) turns categories into columns for dashboard-ready summaries.
-- Data safety: guard calculations (e.g., division) when zero-activity rows can exist.
+- CASE: SQL 的 if-then-else
+- Searched CASE: Complex conditions, ranges → flexible
+- Simple CASE: Exact matches → code → text
+- Pivot: SUM/COUNT(CASE ...) → rows to columns
+- Safe math: CASE guard division-by-zero (especially with LEFT JOIN)
+- UPDATE with CASE: Bulk conditional changes in one statement
+- Always add ELSE → avoid unexpected NULL

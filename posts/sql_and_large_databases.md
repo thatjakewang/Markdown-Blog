@@ -1,11 +1,12 @@
-title: "SQL and Large Databases: Scaling Up"
+title: SQL and Large Databases
 date: 2026-01-08
-description: "Learn how partitioning, sharding, and columnar storage help SQL scale from millions to billions of rows."
+description: Quick notes on scaling SQL. Partitioning, sharding, columnar storage for millions/billions rows.
 
-## Partitioning (Divide and Conquer)
+## Partitioning (Split Table by Key)
 ```sql
 CREATE TABLE parking_history (
     entry_time DATETIME,
+    -- other columns
     ...
 )
 PARTITION BY RANGE (YEAR(entry_time)) (
@@ -13,32 +14,30 @@ PARTITION BY RANGE (YEAR(entry_time)) (
     PARTITION p2025 VALUES LESS THAN (2026)
 );
 ```
-Partitioning splits one large table into smaller physical pieces (e.g., by year).
+Partition → physically split table (e.g., by year).
+Query WHERE entry_time >= '2025-01-01' → scans only 2025 partition.
+Fast + easy maintenance (drop old partitions).
 
-Why it matters? A query like WHERE entry_time LIKE '2025%' scans only the 2025 partition and skips older data, greatly reducing I/O.
-
-## Clustering and Sharding
-Concept:
-- Clustering: replicate data across servers for availability.
-- Sharding: split data across servers for scale (e.g., Taipei on Server A, Kaohsiung on Server B).
-
-Why it matters: analysts may need different endpoints per region. Cross-shard joins are costly and often avoided.
-
-## Row vs. Columnar Storage
-
-Row-Oriented (e.g., MySQL):
-- Stores rows together.
-- Best for OLTP.
-- Example: fetch one ticket’s full record.
-
-Column-oriented (e.g., BigQuery, Redshift):
-- Stores columns together.
-- Best for OLAP.
-- Example: compute AVG(duration) over millions of rows by reading only the duration column.
-
-Why it matters: analytics usually run on columnar systems. Avoid SELECT *; extra columns mean extra I/O.
+## Clustering vs Sharding
+- Clustering: Replicate same data across servers → high availability, failover.
+- Sharding: Split data across servers (e.g., station_code A-M on Server 1, N-Z on Server 2).
+Sharding pros: huge scale.
+Cons: cross-shard JOINs slow/expensive → design queries to stay in one shard.
+## Row vs Columnar Storage
+Row-oriented (MySQL, PostgreSQL):
+- Stores full rows together.
+- Great for OLTP (insert/update one ticket).
+Column-oriented (BigQuery, Redshift, ClickHouse):
+- Stores each column separately.
+- Great for OLAP (analytics).
+- Example: SUM(duration) over billions → reads only duration column.
+Tip: In columnar → never SELECT *; pick only needed columns.
 
 ## Summary
-- Scale changes everything: queries that work on small data can fail on huge tables.
-- Use partitions: always filter on the partition key (date, region).
-- Prefer columnar for analytics: select only the columns you need.
+- Partition: Split by date/region → queries prune unused parts
+- Always filter on partition key → max speed
+- Sharding: Horizontal scale → avoid cross-shard operations
+- Clustering: For HA/read replicas, not scale-out
+- Row store: OLTP (transactions)
+- Column store: OLAP (analytics) → select minimal columns
+- Big data rule: Test queries on full-size data; small tests lie

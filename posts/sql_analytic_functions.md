@@ -1,11 +1,13 @@
-title: "SQL Analytic Functions"
+title: SQL Analytic Functions
 date: 2026-01-08
-description: "Use window functions to rank stations, compute percentages, and analyze time series without collapsing rows."
+description: Quick notes on window functions. Rank, percentages, time series—without GROUP BY collapsing rows.
 
-## The Concept: Aggregation Without Grouping
-Unlike `GROUP BY`, analytic (window) functions keep every row and add calculated values based on related rows. The logic lives in the `OVER()` clause.
+## Core Idea: Aggregate Per Row (No Collapsing)
+Window functions add calculations to EVERY row, based on a "window" of related rows.  
+Use OVER() to define the window.  
+Unlike GROUP BY: keeps all detail rows.
 
-## Ranking Functions
+## Ranking (RANK, DENSE_RANK, ROW_NUMBER)
 ```sql
 SELECT station_name,
        amount,
@@ -13,22 +15,31 @@ SELECT station_name,
 FROM payment_history
 WHERE DATE(paid_time) = CURRENT_DATE;
 ```
-Rank transactions by amount within each station.
-- PARTITION BY station_name resets ranks per station.
-- ORDER BY amount DESC assigns rank 1 to the highest amount. This finds top transactions per station in one query.
+- PARTITION BY station_name: reset rank per station
+- ORDER BY amount DESC: rank 1 = highest
+- RANK(): ties get same rank (e.g., two #1s, next is #3)
 
-## Reporting Aggregates (Grand Totals)
+Example output (sample data):
+Station A: amounts 200(#1), 150(#2), 100(#3)
+Station B: 300(#1), 50(#2)
+
+## Running Totals & Percentages
 
 ```sql
 SELECT station_name,
        amount,
        SUM(amount) OVER (PARTITION BY station_name) AS station_daily_total,
-       amount / SUM(amount) OVER (PARTITION BY station_name) * 100 AS pct_of_total
+       amount * 100.0 / SUM(amount) OVER (PARTITION BY station_name) AS pct_of_total
 FROM payment_history;
 ```
-Compare each row to its group total. The windowed SUM puts the station total on every row, making percentage calculations trivial—no self-joins needed.
+SUM over partition → total on every row.
+Easy % calc: no self-joins needed.
+Example: Station A total=450
+- 100 → 22.22%
+- 200 → 44.44%
+- 150 → 33.33%
 
-## Time Series Analysis (LAG / LEAD)
+## Time Gaps (LAG / LEAD)
 
 ```sql
 SELECT license_plate,
@@ -41,9 +52,11 @@ SELECT license_plate,
        ) AS idle_minutes
 FROM parking_history;
 ```
-LAG() reads the previous row to compute gaps between events. Here it measures idle time between consecutive entries at the same station. LEAD() works the same way, but looks forward.
+LAG(): previous row value
+LEAD(): next row value
+Here: minutes between consecutive entries (idle time).
 
-## Window Frames (Moving Averages)
+## Moving Averages (Window Frames)
 
 ```sql
 SELECT paid_time,
@@ -55,10 +68,14 @@ SELECT paid_time,
        ) AS moving_avg
 FROM payment_history;
 ```
-Window frames define a sliding range. This calculates a moving average over the current and previous two transactions, smoothing short-term noise.
+ROWS BETWEEN: sliding window size
+- 2 PRECEDING: last 2 + current = 3-row average
+Smooths trends, ignores future data.
 
 ## Summary
-- OVER(): defines the calculation window.
-- PARTITION BY: groups rows without collapsing them.
-- ORDER BY: required for ranking and time-based analysis.
-- Efficiency: replaces self-joins and complex subqueries for advanced analytics.
+- OVER(): The window definer → PARTITION BY (groups) + ORDER BY (sequence) + ROWS (range)
+- Ranking: RANK() for ties, DENSE_RANK() no gaps, ROW_NUMBER() unique
+- Aggregates: SUM/AVG/COUNT over window → per-row stats
+- LAG/LEAD: Peek previous/next → time series gaps, trends
+- Frames: ROWS/RANGE BETWEEN → moving calcs (e.g., 3-day avg)
+- Pro tip: Faster than subqueries/joins for analytics; always ORDER BY for time/rank

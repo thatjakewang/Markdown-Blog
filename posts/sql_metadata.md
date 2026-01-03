@@ -1,17 +1,19 @@
-title: "SQL Metadata: Data about Data"
+title: SQL Metadata: Data about Data
 date: 2026-01-07
-description: "Query information_schema to inspect tables, columns, and constraints—and generate SQL automatically."
+description: Quick notes on information_schema. Query database catalog to list tables, columns, constraints—and generate SQL.
 
-## What is Information Schema?
+## List Tables (Basic Info)
 ```sql
 SELECT table_name, table_rows, create_time
 FROM information_schema.tables
 WHERE table_schema = 'your_database_name'
   AND table_name LIKE '%history%';
 ```
-INFORMATION_SCHEMA is the database’s built-in catalog. Instead of browsing manually, you can query it to list tables (e.g., parking_history, payment_history) and see details like approximate row counts and creation time.
+information_schema = built-in catalog.
+Query it like normal table → get table list, row count (approx), create time.
+Great for quick schema overview.
 
-## Working with Columns
+## List Columns & Data Types
 
 ```sql
 SELECT table_name, column_name, data_type, is_nullable
@@ -19,9 +21,10 @@ FROM information_schema.columns
 WHERE table_schema = 'your_database_name'
   AND data_type IN ('datetime', 'timestamp');
 ```
-Use metadata to audit data types across the entire schema. This is handy before time-series work: confirm time fields are stored as DATETIME/TIMESTAMP, not strings.
+Find all datetime columns across schema.
+Audit before time-series work → avoid string dates.
 
-## Retrieving Constraints
+## List Constraints (PK/FK/UNIQUE)
 
 ```sql
 SELECT table_name, constraint_name, constraint_type
@@ -29,23 +32,27 @@ FROM information_schema.table_constraints
 WHERE table_schema = 'your_database_name'
   AND table_name = 'management_table';
 ```
-When constraint errors are unclear, this gives you a direct list of active rules (PK/FK/UNIQUE) on a table—your schema’s “rule book”.
+See active rules on a table.
+Debug "constraint violation" errors → know exact PK/FK names.
 
-## Dynamic SQL Generation
+## Generate SQL from Metadata
 
 ```sql
 SELECT CONCAT(
-  'SELECT "', table_name, '" AS tbl, COUNT(*) AS cnt FROM ', table_name,
+  'SELECT ''', table_name, ''' AS tbl, COUNT(*) AS cnt FROM ', table_name,
   ' UNION ALL '
-)
+) AS generated_sql
 FROM information_schema.tables
 WHERE table_schema = 'your_database_name';
-
 ```
-SQL can generate SQL. This query reads table names from metadata and outputs a row-count statement per table. Copy the output, run it, and you get a bulk table-size report without writing 50 queries by hand.
-
+Output → ready-to-run query counting rows in every table.
+Copy result → run → instant size report for all tables.
+Tip: Remove last "UNION ALL " in app code.
 ## Summary
-
-- Self-awareness: use information_schema to inspect tables, columns, and constraints.
-- No GUI required: schema details are queryable like any other data.
-- Automation: metadata enables scripts that adapt as the database evolves.
+- information_schema: Standard views for metadata (all DBs)
+- tables: List tables + row counts + create time
+- columns: Column names, types, nullable → schema audit
+- table_constraints: PK, FK, UNIQUE, CHECK rules
+- key_column_usage: See which columns in constraints
+- Generate SQL: CONCAT + metadata → automate reports/scripts
+- No GUI needed: Everything queryable → script-friendly

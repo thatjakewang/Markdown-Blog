@@ -1,8 +1,8 @@
-title: "SQL Joins: Querying Multiple Tables"
+title: "SQL Querying Multiple Tables"
 date: 2025-12-26
-description: Learn how to connect parking, payment, and management data using SQL joins. Covers inner joins, self-joins, and non-equi joins with practical examples using real parking datasets.
+description: Quick notes on SQL JOINs. Connect parking, payment, and station data. Covers inner join, multi-table join, aliases, self-join, and non-equi join.
 
-## Inner Join
+## Inner Join (Most Common)
 ```sql
 SELECT ph.license_plate,
        ph.entry_time,
@@ -12,9 +12,8 @@ FROM parking_history ph
 INNER JOIN management_table mt
   ON ph.station_code = mt.station_code;
 ```
-
-This query selects the vehicle’s license_plate and entry_time from parking_history, then joins management_table on the shared key station_code to bring in station metadata such as bd_name and city. Because this is an INNER JOIN, only rows with matching station_code values in both tables are returned.
-
+INNER JOIN keeps only rows with matching keys in both tables.
+Here: add station name and city to parking records.
 ## Joining Three Tables
 ```sql
 SELECT ph.license_plate,
@@ -28,30 +27,30 @@ INNER JOIN payment_history pay
   ON ph.station_code = pay.station_code
  AND ph.entry_time   = pay.entry_time;
 ```
+Start with parking_history → add station info → add payment info.
+Use multiple keys (station_code + entry_time) when no single unique ID.
 
-The query starts from parking_history, joins management_table to attach location information, and then joins payment_history to bring in payment details. The payment join uses station_code plus entry_time to align each payment record with the corresponding parking session.
-
-## Using Table Aliases
+## Table Aliases (Make Code Short)
+Bad (too long):
 ```sql
 SELECT parking_history.station_name, management_table.bd_team
 FROM parking_history
 INNER JOIN management_table
   ON parking_history.station_code = management_table.station_code;
-
+```
+Good (use short aliases):
+```sql
 SELECT ph.station_name, mt.bd_team
 FROM parking_history ph
 INNER JOIN management_table mt
   ON ph.station_code = mt.station_code;
 ```
+Aliases help when:
+- Same column names in many tables
+- Joining 3+ tables
+- Self-join (same table twice)
 
-In the first query, columns are referenced using full table names. This is explicit but becomes verbose as queries grow. The second query uses aliases (ph, mt) to keep the SQL shorter and easier to read, while still making column origins clear.
-
-Aliases are especially helpful when:
-- multiple tables share column names (e.g., station_code, created_at)
-- joining more than two tables
-- joining the same table more than once (self-join)
-
-## Self-Joins
+## Self-Join (Table Joins Itself)
 
 ```sql
 SELECT t1.station_name AS station_a,
@@ -64,14 +63,10 @@ INNER JOIN management_table t2
   ON t1.area    = t2.area
  AND t1.bd_team <> t2.bd_team;
 ```
+Use two aliases (t1, t2) for the same table.
+Find pairs of stations in same area but different teams.
 
-A self-join joins a table to itself. Here, t1 and t2 represent two different “views” of management_table, allowing the query to pair stations in the same area but owned by different BD teams.
-
-- ON t1.area = t2.area matches stations located in the same area.
-- AND t1.bd_team <> t2.bd_team keeps only pairs where the stations belong to different BD teams.
-
-## Non-Equi-Joins
-
+## Non-Equi Join (Not Just =)
 ```sql
 SELECT ph.license_plate,
        ph.entry_time,
@@ -82,11 +77,14 @@ INNER JOIN management_table mt
   ON ph.station_code = mt.station_code
  AND ph.entry_time   < mt.open_date;
 ```
-
-A non-equi join uses comparison operators (e.g., <, >, <=) in the join condition. This query returns rows where entry_time is earlier than the station’s open_date, which can be useful for detecting data quality issues such as incorrect timestamps or misconfigured station metadata.
+Use <, >, <=, etc. in ON clause.
+Here: find parking entries before the station even opened (data error check).
 
 ## Summary
 
-- Data is distributed: parking behavior is stored in parking_history, station ownership/location in management_table, and revenue in payment_history.
-- JOIN is the bridge: station_code links these datasets into a unified view.
-- Real-world complexity: without a unique ticket_id, joining parking sessions to payments may require a composite key (e.g., station_code + entry_time), highlighting why careful join design matters in real datasets.
+- NNER JOIN: Only matching rows from both tables
+- Multiple tables: Chain JOINs one by one
+- Aliases: Always use short names (ph, mt, pay) → cleaner code
+- Self-join: Same table twice with different aliases
+- Non-equi join: Use < > <= >= in ON (not just =)
+- Real tip: Many real datasets need composite keys (multiple columns) to link correctly

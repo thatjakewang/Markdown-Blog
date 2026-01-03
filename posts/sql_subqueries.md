@@ -1,17 +1,18 @@
 title: "SQL Subqueries"
 date: 2025-12-29
-description: Learn how to nest queries within queries. Covers scalar subqueries, IN, correlated subqueries with EXISTS, and using subqueries as derived tables for complex logic.
+description: Quick notes on SQL subqueries. Nest queries for dynamic filters, lists, checks, and derived tables.
 
-## What is a Subquery?
+## Basic Subquery (Scalar)
 ```sql
 SELECT station_code, station_name, open_date
 FROM management_table
 WHERE open_date = (SELECT MAX(open_date) FROM management_table);
 ```
+Inner query runs first → finds latest open_date.
+Outer query → gets stations opened on that date.
+No need to hardcode values.
 
-A subquery is a query nested inside another query (enclosed in parentheses). Here, the inner query runs first to find the most recent open_date. The outer query then returns the station(s) that opened on that latest date—so the filter stays dynamic without hardcoding dates.
-
-## Noncorrelated Subqueries (IN)
+## IN Subquery (Filter by List)
 ```sql
 SELECT mt.station_name, ph.license_plate, ph.entry_time
 FROM parking_history ph
@@ -24,14 +25,11 @@ WHERE ph.station_code IN (
 );
 
 ```
+Subquery → list of station_codes in Xinyi.
+Outer → only parking records from those stations.
+Non-correlated (subquery runs once).
 
-A noncorrelated subquery can run independently of the outer query. In this example:
-
-1. The subquery produces a list of station_code values in "Xinyi Dist".
-2. The outer query returns parking records only for stations in that list.
-This is often more intuitive than a join when your goal is simply “filter by a list”.
-
-## Correlated Subqueries (NOT EXISTS)
+## NOT EXISTS (Find Unmatched Rows)
 
 ```sql
 SELECT ph.license_plate, ph.station_code, ph.entry_time
@@ -43,15 +41,11 @@ WHERE NOT EXISTS (
       AND pay.entry_time   = ph.entry_time
 );
 ```
+Correlated: checks each parking row.
+If no matching payment → return it (unpaid sessions).
+Great for auditing missing records.
 
-A correlated subquery depends on values from the outer query, so it is evaluated for each row in the outer table. Here, NOT EXISTS is used for auditing unpaid parking sessions:
-
-- For each record in parking_history, the database checks whether a matching payment exists.
-- If no match is found, that parking record is returned.
-
-This is a common pattern for data integrity checks.
-
-## Subqueries as Data Sources (Derived Tables)
+## Derived Table (Subquery in FROM)
 
 ```sql
 SELECT station_code, day_of_record, daily_total
@@ -64,12 +58,11 @@ FROM (
 ) AS daily_stats
 WHERE daily_total > 10000;
 ```
-A subquery in the FROM clause creates a temporary derived table:
-1. The inner query aggregates raw payments into daily totals per station_code.
-2. The outer query filters the aggregated result to find high-revenue days (daily total > 10,000).
-This “aggregate first, then filter” structure keeps complex logic readable.
+Inner → aggregate daily revenue per station.
+Outer → filter high-revenue days (>10,000).
+Perfect for "group first, then filter".
 
-## Subqueries as Expression Generators (Scalar Subquery in SELECT)
+## Scalar Subquery in SELECT
 
 ```sql
 SELECT mt.station_name,
@@ -79,12 +72,14 @@ SELECT mt.station_name,
         WHERE ph.station_code = mt.station_code) AS total_visits
 FROM management_table mt;
 ```
-A subquery can also appear in the SELECT list to generate a single value per row (a scalar subquery). Here, for each station, the subquery counts how many parking records exist.
-
-This is convenient for quick analysis, but can be slower on large datasets compared to a JOIN + GROUP BY.
+Subquery returns one value per row → total visits per station.
+Simple, but can be slow on big data (JOIN often faster).
 
 ## Summary
-- Dynamic filtering: scalar subqueries (e.g., MAX, AVG) let you compare against calculated benchmarks.
-- Set filtering: IN / NOT IN filters rows based on a list returned by another query.
-- Existence checks: EXISTS / NOT EXISTS are ideal for match/non-match auditing without duplicating rows.
-- Derived tables: subqueries in FROM enable multi-step logic (e.g., aggregate first, then query the summarized result).
+- Scalar (=, > etc.): Compare to single value (e.g., MAX, AVG)
+- IN / NOT IN: Filter by list from subquery
+- EXISTS / NOT EXISTS: Check if match exists (no duplicate rows)
+- Correlated: Subquery uses outer row values (runs many times)
+- Non-correlated: Runs once only
+- Derived table: Subquery in FROM → multi-step logic
+- Scalar in SELECT: Add calculated column per row

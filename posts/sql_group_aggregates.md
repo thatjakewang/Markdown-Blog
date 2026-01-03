@@ -1,6 +1,8 @@
-title: "SQL Grouping and Aggregates"
+---
+title: SQL Grouping and Aggregates
 date: 2025-12-29
-description: Quick notes on GROUP BY, aggregates (COUNT, AVG, etc.), HAVING, and ROLLUP. Summarize parking data by station, hour, etc.
+description: "Quick notes on GROUP BY, aggregates (COUNT, AVG, etc.), HAVING, and ROLLUP. Summarize parking data by station, hour, etc."
+---
 
 ## Basic Grouping (GROUP BY)
 

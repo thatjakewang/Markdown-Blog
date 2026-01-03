@@ -1,6 +1,8 @@
-title: SQL Metadata: Data about Data
+---
+title: "SQL Metadata: Data about Data"
 date: 2026-01-07
-description: Quick notes on information_schema. Query database catalog to list tables, columns, constraints—and generate SQL.
+description: "Quick notes on information_schema. Query database catalog to list tables, columns, constraints—and generate SQL."
+---
 
 ## List Tables (Basic Info)
 ```sql

@@ -1,6 +1,8 @@
-title: SQL Data Filtering
+---
+title: "SQL Data Filtering"
 date: 2025-12-25
-description: Quick notes on SQL WHERE filters: AND/OR, IN, LIKE, NULL, and more. Examples from parking system.
+description: "Quick notes on SQL WHERE filters: AND/OR, IN, LIKE, NULL, and more. Examples from parking system."
+---
 
 ## Conditions with AND, OR, NOT
 

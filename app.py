@@ -68,10 +68,20 @@ def get_posts_json():
     posts_data = []
     for p in pages:
         if 'date' in p.meta:
+            # 安全處理日期：可能是字串或 datetime
+            raw_date = p.meta.get('date')
+            if isinstance(raw_date, str):
+                date_str = raw_date
+            else:
+                try:
+                    date_str = raw_date.strftime('%Y-%m-%d') if raw_date else ''
+                except Exception:
+                    date_str = ''
+
             posts_data.append({
                 'title': p.meta.get('title', ''),
                 'url': url_for('post', path=p.path),
-                'date': p.meta.get('date').strftime('%Y-%m-%d'),
+                'date': date_str,
                 'description': p.meta.get('description', ''),
                 'body': p.body if p.body else ''
             })

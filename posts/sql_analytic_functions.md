@@ -1,6 +1,8 @@
+---
 title: SQL Analytic Functions
 date: 2026-01-08
-description: Quick notes on window functions. Rank, percentages, time series—without GROUP BY collapsing rows.
+description: "Quick notes on window functions. Rank, percentages, time series—without GROUP BY collapsing rows."
+---
 
 ## Core Idea: Aggregate Per Row (No Collapsing)
 Window functions add calculations to EVERY row, based on a "window" of related rows.  

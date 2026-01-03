@@ -1,6 +1,8 @@
+---
 title: SQL and Large Databases
 date: 2026-01-08
-description: Quick notes on scaling SQL. Partitioning, sharding, columnar storage for millions/billions rows.
+description: "Quick notes on scaling SQL. Partitioning, sharding, columnar storage for millions/billions rows."
+---
 
 ## Partitioning (Split Table by Key)
 ```sql

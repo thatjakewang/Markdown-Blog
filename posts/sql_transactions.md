@@ -1,6 +1,8 @@
+---
 title: SQL Transactions
 date: 2026-01-04
-description: Quick notes on transactions. Use COMMIT for all-or-nothing, ROLLBACK to undo, SAVEPOINT for partial undo.
+description: "Quick notes on transactions. Use COMMIT for all-or-nothing, ROLLBACK to undo, SAVEPOINT for partial undo."
+---
 
 ## Atomicity: All or Nothing
 ```sql

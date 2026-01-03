@@ -1,6 +1,8 @@
+---
 title: "SQL Set Operators"
 date: 2025-12-27
-description: Quick notes on UNION, INTERSECT, EXCEPT. Combine or compare query results. Examples: find unpaid parking, merge event logs.
+description: "Quick notes on UNION, INTERSECT, EXCEPT. Combine or compare query results. Examples: find unpaid parking, merge event logs."
+---
 
 ## The UNION Operator
 

@@ -1,6 +1,8 @@
-title: SQL Indexes and Constraints
+---
+title: "SQL Indexes and Constraints"
 date: 2026-01-05
-description: Quick notes on indexes and constraints. Speed up queries, enforce data rules in parking system.
+description: "Quick notes on indexes and constraints. Speed up queries, enforce data rules in parking system."
+---
 
 ## Basic Index (Faster Lookups)
 ```sql

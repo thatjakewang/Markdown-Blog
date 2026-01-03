@@ -1,6 +1,8 @@
-title: SQL Views
+---
+title: "SQL Views"
 date: 2026-01-06
-description: Quick notes on SQL views. Virtual tables to simplify queries, hide sensitive data, standardize reports.
+description: "Quick notes on SQL views. Virtual tables to simplify queries, hide sensitive data, standardize reports."
+---
 
 ## Creating Views
 

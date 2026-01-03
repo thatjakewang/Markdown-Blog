@@ -1,6 +1,8 @@
-title: "SQL Subqueries"
+---
+title: SQL Subqueries
 date: 2025-12-29
-description: Quick notes on SQL subqueries. Nest queries for dynamic filters, lists, checks, and derived tables.
+description: "Quick notes on SQL subqueries. Nest queries for dynamic filters, lists, checks, and derived tables."
+---
 
 ## Basic Subquery (Scalar)
 ```sql

@@ -1,6 +1,8 @@
-title: "SQL Querying Multiple Tables"
+---
+title: SQL Querying Multiple Tables
 date: 2025-12-26
-description: Quick notes on SQL JOINs. Connect parking, payment, and station data. Covers inner join, multi-table join, aliases, self-join, and non-equi join.
+description: "Quick notes on SQL JOINs. Connect parking, payment, and station data. Covers inner join, multi-table join, aliases, self-join, and non-equi join."
+---
 
 ## Inner Join (Most Common)
 ```sql

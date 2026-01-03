@@ -1,18 +1,20 @@
-title: SQL Data Manipulation
+---
+title: "SQL Data Manipulation"
 date: 2025-12-28
-description: Quick notes on SQL string, date, and math functions. Examples: mask plates, calculate fees, count by hour.
+description: "Quick notes on SQL string, date, and math functions. Examples: mask plates, calculate fees, count by hour."
+---
 
 ## Mask License Plate (Privacy)
 
 ```sql
 SELECT license_plate,
        CONCAT(SUBSTRING(license_plate, 1, 3), REPEAT('*', 4)) AS masked_plate
-FROM parking_history;
-```
-Keep first 3 characters → add ****.
-Good for reports: hide full plate but still see prefix (region/type).
+---
+title: SQL Data Manipulation
+date: 2025-12-28
+description: Quick notes on SQL string, date, and math functions. Examples: mask plates, calculate fees, count by hour.
+---
 
-## Calculate Parking Duration & Fee
 ```sql
 SELECT license_plate,
        TIMESTAMPDIFF(MINUTE, entry_time, exit_time) AS total_minutes,
@@ -51,6 +53,3 @@ Prevents type errors when mixing text + date.
 - Mask text: SUBSTRING + CONCAT + REPEAT('*')
 - Duration: TIMESTAMPDIFF(MINUTE, start, end)
 - Round up: CEIL(value) for ceiling billing
-- Extract hour: HOUR(timestamp) → good for hourly stats
-- Safe concat: CAST(non-text AS CHAR) before mixing with strings
-- Other common: FLOOR (round down), ROUND (normal round)

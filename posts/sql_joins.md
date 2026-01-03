@@ -1,6 +1,8 @@
-title: SQL Joins Revisited
+---
+title: "SQL Joins Revisited"
 date: 2025-12-30
-description: Quick notes on Outer Joins, Cross Joins, and more. Keep missing data, build grids, avoid pitfalls.
+description: "Quick notes on Outer Joins, Cross Joins, and more. Keep missing data, build grids, avoid pitfalls."
+---
 
 ## Left Join (Keep All from Left Table)
 

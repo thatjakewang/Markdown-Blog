@@ -1,6 +1,8 @@
-title: SQL Query Primer
+---
+title: "SQL Query Primer"
 date: 2025-12-25
-description: A practical primer on SQL SELECT statements, illustrated with real-world parking data analysis examples.
+description: "A practical primer on SQL SELECT statements, illustrated with real-world parking data analysis examples."
+---
 ## SELECT
 ```sql
 SELECT license_plate, entry_time

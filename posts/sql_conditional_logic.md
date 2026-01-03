@@ -1,6 +1,8 @@
-title: SQL Conditional Logic
+---
+title: "SQL Conditional Logic"
 date: 2025-12-31
-description: Quick notes on CASE. Categorize data, pivot rows to columns, safe calculations, conditional updates.
+description: "Quick notes on CASE. Categorize data, pivot rows to columns, safe calculations, conditional updates."
+---
 
 ## Searched CASE (Ranges & Complex Rules)
 ```sql

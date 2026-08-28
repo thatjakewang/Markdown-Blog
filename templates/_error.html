@@ -1,0 +1,14 @@
+{# Shared error page body — used by 404.html and 500.html (set code + message) #}
+{% extends 'base.html' %}
+
+{% block title %}{{ code }} - {{ message }}{% endblock %}
+
+{% block content %}
+<section class="intro error-page">
+    <h1>{{ code }}</h1>
+    <p class="subtitle">{{ message }}</p>
+    <p class="error-back">
+        <a href="/">← Back to Home</a>
+    </p>
+</section>
+{% endblock %}

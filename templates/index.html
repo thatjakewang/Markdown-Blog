@@ -1,0 +1,43 @@
+{# Home (pages.home): intro bio, project cards, skills #}
+{% extends 'base.html' %}
+{% block content %}
+<section class="intro">
+    <h1>Data Projects</h1>
+    <p class="subtitle">Python, SQL, and analytics — built and tracked in the open.</p>
+    <p class="intro-bio">I currently work in the parking industry as a business, data, and systems engineer — analyzing operations data, writing performance reports for leadership, and maintaining the company's internal Kintone apps.</p>
+</section>
+
+<section class="content-block" aria-label="Projects">
+    <h2>Projects</h2>
+    <div class="project-preview">
+        <h3><a href="/mytesla/">🚗 MyTesla</a></h3>
+        <p class="project-desc">Live Tesla Model 3 Highland cost tracker — total ownership cost, cost per km, charging by provider, and monthly trends.</p>
+    </div>
+</section>
+
+<section class="content-block" aria-label="Skills">
+    <h2>Skills</h2>
+    <dl class="skill-list">
+        <div class="skill-group">
+            <dt>Languages</dt>
+            <dd>Python · SQL · JavaScript · HTML / CSS</dd>
+        </div>
+        <div class="skill-group">
+            <dt>Data</dt>
+            <dd>Pandas · NumPy · Excel · PowerBI</dd>
+        </div>
+        <div class="skill-group">
+            <dt>ML &amp; Stats</dt>
+            <dd>scikit-learn · SciPy · Hypothesis testing · A/B testing</dd>
+        </div>
+        <div class="skill-group">
+            <dt>Visualization</dt>
+            <dd>Matplotlib · Seaborn · Chart.js</dd>
+        </div>
+        <div class="skill-group">
+            <dt>Tools</dt>
+            <dd>Git · Flask · Jinja</dd>
+        </div>
+    </dl>
+</section>
+{% endblock %}

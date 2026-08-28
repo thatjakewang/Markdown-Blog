@@ -1,0 +1,687 @@
+/* style.css — the single stylesheet for the whole site (blog + dashboards).
+
+   Organized into the numbered sections below. All colors and the mono font
+   stack live in the :root custom properties, so restyling means editing one
+   block. Mobile breakpoints sit next to the components they adjust rather
+   than in a separate responsive section. */
+
+/* =========================================
+   1. CSS Variables
+   ========================================= */
+:root {
+    --bg-color: #ffffff;
+    --text-color: #333333;
+    --heading-color: #222222;
+    --link-color: #c2410c;      /* accessible orange */
+    --link-hover: #9a3412;
+    --border-color: #eeeeee;    /* divider */
+    --code-bg: #f6f8fa;         /* code block background */
+    --code-border: #e1e4e8;
+    --muted-color: #666666;     /* subtitles, quotes */
+    --meta-color: #707070;      /* dates, footer text */
+    --subtle-bg: #fafafa;       /* zebra rows, hover/card backgrounds */
+    --mono-font: ui-monospace, 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+}
+
+/* =========================================
+   2. Reset & Base Styles
+   ========================================= */
+body {
+    /* System font stack — no webfont download */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.7;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    color: var(--link-color);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: var(--link-hover);
+    text-decoration: underline;
+}
+
+/* =========================================
+   3. Layout
+   ========================================= */
+.container {
+    max-width: 740px; /* optimal reading width */
+    margin: 0 auto;
+    padding: 36px 20px 40px;
+}
+
+/* =========================================
+   4. Header & Navigation
+   Full-bleed sticky bar (x.ai-style shell, light theme).
+   Desktop: horizontal nav.
+   Mobile (≤720px): hamburger → full-viewport menu.
+   ========================================= */
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: saturate(180%) blur(12px);
+    -webkit-backdrop-filter: saturate(180%) blur(12px);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.site-header-inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 48px; /* space between logo and nav */
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 14px 24px;
+    min-height: 56px;
+    box-sizing: border-box;
+}
+
+.logo {
+    flex-shrink: 0;
+    font-size: 1.05rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    color: var(--heading-color);
+    text-decoration: none;
+    line-height: 1;
+}
+
+.logo:hover {
+    color: var(--heading-color);
+    text-decoration: none;
+    opacity: 0.72;
+}
+
+/* Desktop: panel is an inline flex row (nav + CTA).
+   Mobile open: expands into a full-height menu (see media query). */
+.site-header-panel {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    gap: 20px;
+    /* Extra air after the logo — gap on .site-header-inner alone can feel tight */
+    margin-left: 8px;
+}
+
+.site-nav {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 4px 20px;
+    min-width: 0;
+}
+
+.nav-link {
+    color: var(--muted-color);
+    font-size: 0.9rem;
+    font-weight: 300; /* light / thin on desktop and mobile, x.ai-style */
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    line-height: 1;
+    padding: 6px 0;
+    transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.nav-link:hover {
+    color: var(--heading-color);
+    text-decoration: none;
+}
+
+.nav-link.is-active {
+    color: var(--heading-color);
+    font-weight: 400; /* still light; active via color only, no underline */
+}
+
+/* Outline CTA — external profile, not a product funnel */
+.header-cta {
+    flex-shrink: 0;
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 14px;
+    font-size: 0.85rem;
+    font-weight: 550;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    color: var(--heading-color);
+    text-decoration: none;
+    border: 1px solid var(--code-border);
+    border-radius: 999px;
+    background: var(--bg-color);
+    transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+}
+
+.header-cta:hover {
+    color: var(--heading-color);
+    text-decoration: none;
+    border-color: var(--heading-color);
+    background: var(--subtle-bg);
+}
+
+/* Hamburger — hidden on desktop, shown ≤720px */
+.nav-toggle {
+    display: none;
+    margin-left: auto;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    cursor: pointer;
+    color: var(--heading-color);
+}
+
+.nav-toggle:hover {
+    background: var(--subtle-bg);
+}
+
+.nav-toggle:focus-visible {
+    outline: 2px solid var(--heading-color);
+    outline-offset: 2px;
+}
+
+.nav-toggle-bar {
+    display: block;
+    width: 18px;
+    height: 1.5px;
+    background: currentColor;
+    border-radius: 1px;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.nav-toggle-bar + .nav-toggle-bar {
+    margin-top: 6px;
+}
+
+/* Morph the two bars into an X when open */
+.site-header.is-open .nav-toggle-bar:first-child {
+    transform: translateY(3.75px) rotate(45deg);
+}
+
+.site-header.is-open .nav-toggle-bar:last-child {
+    transform: translateY(-3.75px) rotate(-45deg);
+}
+
+/* Lock page scroll while the full-height menu is open */
+body.nav-open {
+    overflow: hidden;
+}
+
+/* Mobile: full-viewport menu (x.ai-style), not a short dropdown */
+@media (max-width: 720px) {
+    .site-header-inner {
+        gap: 12px;
+        padding: 10px 16px;
+        min-height: 52px;
+        /* Top bar only; the panel is laid out separately when open */
+        flex-wrap: nowrap;
+    }
+
+    .logo {
+        font-size: 0.98rem;
+    }
+
+    .nav-toggle {
+        display: inline-flex;
+        flex-direction: column;
+        position: relative;
+        z-index: 2; /* stay above the full-height panel */
+    }
+
+    .site-header-panel {
+        display: none;
+    }
+
+    /* Cover the whole viewport; top row (logo + X) stays visible */
+    .site-header.is-open {
+        position: fixed;
+        inset: 0;
+        height: 100vh;
+        height: 100dvh;
+        z-index: 200;
+        display: flex;
+        flex-direction: column;
+        background: var(--bg-color);
+        border-bottom: none;
+        overflow: hidden;
+        /* iOS notch / home indicator */
+        padding-top: env(safe-area-inset-top, 0);
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    .site-header.is-open .site-header-inner {
+        flex: 1;
+        flex-direction: column;
+        align-items: stretch;
+        max-width: none;
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        padding: 10px 20px 28px;
+        box-sizing: border-box;
+    }
+
+    /* Keep logo + toggle on one top row inside the column layout */
+    .site-header.is-open .logo {
+        position: absolute;
+        top: calc(10px + env(safe-area-inset-top, 0px));
+        left: 20px;
+        z-index: 2;
+        line-height: 40px; /* align with 40px toggle */
+    }
+
+    .site-header.is-open .nav-toggle {
+        position: absolute;
+        top: calc(10px + env(safe-area-inset-top, 0px));
+        right: 12px;
+        z-index: 2;
+    }
+
+    .site-header.is-open .site-header-panel {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start; /* stack from the top, like x.ai */
+        gap: 28px;
+        min-height: 0;
+        width: 100%;
+        /* Clear the absolute top bar (logo / toggle) */
+        padding-top: 72px;
+        box-sizing: border-box;
+        overflow-y: auto;
+    }
+
+    .site-nav {
+        flex-direction: column;
+        align-items: stretch;
+        flex: 0 0 auto; /* do not grow/center — stay top-aligned */
+        justify-content: flex-start;
+        gap: 2px;
+        min-height: 0;
+    }
+
+    .nav-link {
+        display: block;
+        /* ~16px — product-nav scale like x.ai, not display/hero size */
+        font-size: 1rem;
+        letter-spacing: -0.01em;
+        line-height: 1.35;
+        padding: 10px 2px;
+        border-bottom: none;
+        color: var(--heading-color);
+    }
+
+    .nav-link:hover {
+        opacity: 0.55;
+        background: transparent;
+    }
+
+    .nav-link.is-active {
+        color: var(--heading-color);
+        opacity: 1;
+    }
+
+    /* Dim non-active links slightly so the current page reads as primary */
+    .site-header.is-open .nav-link:not(.is-active) {
+        color: var(--muted-color);
+    }
+
+    .header-cta {
+        margin-top: auto; /* pin CTA near the bottom of the full-height panel */
+        width: 100%;
+        box-sizing: border-box;
+        padding: 14px 16px;
+        font-size: 0.95rem;
+        font-weight: 400;
+        border-radius: 12px;
+    }
+
+    .container {
+        padding-top: 28px;
+    }
+}
+
+/* =========================================
+   5. Typography (Global)
+   ========================================= */
+h1, h2, h3 {
+    color: var(--heading-color);
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+h1 {
+    font-size: 2.8rem;
+    margin-bottom: 10px;
+    letter-spacing: -1px;
+}
+
+h2 {
+    font-size: 1.8rem;
+    margin-top: 50px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+h3 {
+    font-size: 1.4rem;
+    margin-top: 30px;
+    margin-bottom: 15px;
+}
+
+p {
+    margin-bottom: 1.5em;
+    font-size: 1.05rem;
+}
+
+.subtitle {
+    font-size: 1.3rem;
+    color: var(--muted-color);
+    font-weight: 300;
+    margin-top: -5px;
+    margin-bottom: 16px;
+}
+
+.intro-bio {
+    color: var(--text-color);
+    font-size: 1rem;
+    line-height: 1.7;
+    max-width: 60ch;
+    margin-top: 0;
+    margin-bottom: 30px;
+}
+
+/* =========================================
+   6. Home Page Blocks
+   ========================================= */
+
+/* Project list (Home) */
+.project-preview {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.project-preview:last-of-type {
+    border-bottom: none;
+}
+
+.project-preview h3 {
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.project-preview h3 a {
+    color: var(--heading-color);
+}
+
+.project-preview h3 a:hover {
+    color: var(--link-color);
+}
+
+.project-desc {
+    margin: 4px 0 0;
+    color: var(--muted-color);
+    font-size: 0.95rem;
+    line-height: 1.55;
+}
+
+/* Skills list (Home) */
+.skill-list {
+    margin: 0;
+}
+
+.skill-group {
+    display: flex;
+    gap: 1.5rem;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.skill-group:last-child {
+    border-bottom: none;
+}
+
+.skill-group dt {
+    flex: 0 0 140px;
+    color: var(--meta-color);
+    font-size: 14px;
+    font-family: monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    line-height: 1.6;
+}
+
+.skill-group dd {
+    margin: 0;
+    color: var(--text-color);
+    font-size: 16px;
+    line-height: 1.6;
+}
+
+@media (max-width: 540px) {
+    .skill-group {
+        flex-direction: column;
+        gap: 4px;
+    }
+    .skill-group dt {
+        flex: none;
+    }
+}
+/* =========================================
+   7. Footer
+   ========================================= */
+footer {
+    margin-top: 100px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 30px;
+    color: var(--meta-color);
+    font-size: 0.9rem;
+    text-align: center;
+    padding-bottom: 40px;
+}
+
+/* =========================================
+   8. Dashboard (minimal style)
+   ========================================= */
+
+/* Section heading — h2 underline, smaller weight */
+.dashboard-section {
+    margin-top: 50px;
+}
+
+.dashboard-section-title {
+    font-size: 1.15rem;
+    color: var(--muted-color);
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    margin-bottom: 20px;
+}
+
+/* KPI grid — 4 cols default, .cols-3 for 6-cell layouts (e.g. Tesla) */
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.kpi-grid.cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.kpi-card {
+    background: var(--subtle-bg);
+    border: 1px solid var(--border-color);
+    padding: 16px 18px;
+    border-radius: 3px;
+}
+
+.kpi-card-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted-color);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+}
+
+.kpi-card-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--heading-color);
+    line-height: 1.15;
+    margin-bottom: 6px;
+}
+
+.kpi-card-meta {
+    font-size: 12px;
+    color: var(--meta-color);
+}
+
+/* Meta info line under the KPI grid */
+.dashboard-meta {
+    font-size: 13px;
+    color: var(--meta-color);
+    font-style: italic;
+    margin-top: 6px;
+    margin-bottom: 30px;
+}
+
+.dashboard-meta a {
+    color: var(--link-color);
+    font-style: normal;
+}
+
+/* Minimal table — only horizontal dividers, no full grid */
+.dashboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+
+.dashboard-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted-color);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--border-color);
+    background: transparent;
+}
+
+.dashboard-table td {
+    padding: 16px 12px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+    vertical-align: middle;
+}
+
+.dashboard-table tr:last-child td {
+    border-bottom: none;
+}
+
+.dashboard-table td.col-amount,
+.dashboard-table th.col-amount {
+    text-align: right;
+    font-family: var(--mono-font);
+}
+
+.dashboard-table td.col-date {
+    color: var(--meta-color);
+    font-family: var(--mono-font);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+/* Chart slot — keeps minimal aesthetic, no card chrome */
+.dashboard-chart {
+    position: relative;
+    height: 280px;
+    margin-top: 12px;
+}
+
+/* Metric picker (e.g. the histogram's cost / kWh / price switcher) */
+.dashboard-select {
+    font-family: inherit;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    background: var(--subtle-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 3px;
+    padding: 6px 10px;
+}
+
+/* Responsive */
+@media (max-width: 720px) {
+    .kpi-grid,
+    .kpi-grid.cols-3 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .dashboard-table {
+        font-size: 0.85rem;
+    }
+    .dashboard-table th,
+    .dashboard-table td {
+        padding: 12px 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .kpi-card-value {
+        font-size: 1.5rem;
+    }
+}
+
+/* =========================================
+   9. Dashboard Error States
+   ========================================= */
+
+.dashboard-error {
+    color: #c0392b;
+    font-size: 0.9rem;
+    padding: 8px 0;
+    font-style: normal;
+}
+
+.kpi-card.error {
+    background: #fdf2f2;
+    border-color: #fecaca;
+}
+
+.kpi-card-value.error {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #c0392b;
+}
+
+/* =========================================
+   10. Error Pages (404 / 500)
+   ========================================= */
+
+.error-page {
+    text-align: center;
+    padding: 60px 20px;
+}
+
+.error-back {
+    margin-top: 20px;
+}

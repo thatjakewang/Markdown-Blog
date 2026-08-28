@@ -1,0 +1,66 @@
+{#
+  Site-wide skeleton. Blocks a child template can override:
+    title         — per-page <title>
+    extra_head    — page-specific <link>/<style> tags
+    content       — page body
+    extra_scripts — page-specific JS, loaded at the end of <body>
+
+  Views pass meta_title. Jinja globals from app/main.py:
+  static_url(), current_year().
+#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ffffff">
+    {# Also sent as an X-Robots-Tag header (app/main.py); the tag is here too
+       because it is what most crawlers and audit tools look at first. #}
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="stylesheet" href="{{ static_url('css/style.css') }}">
+    <title>{% block title %}{{ meta_title | default('Jake Wang') }}{% endblock %}</title>
+    <script src="{{ static_url('js/nav.js') }}" defer></script>
+    {% block extra_head %}{% endblock %}
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ static_url('images/favicon/web-app-manifest-192x192.png') }}">
+    <link rel="icon" type="image/x-icon" href="{{ static_url('images/favicon/favicon.ico') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ static_url('images/favicon/apple-touch-icon.png') }}">
+</head>
+<body>
+    {# Full-bleed sticky shell; reading content stays in .container below.
+       Desktop: horizontal nav. Mobile: hamburger → full-viewport menu. #}
+    <header class="site-header">
+        <div class="site-header-inner">
+            <a class="logo" href="/">Jake Wang</a>
+
+            <button type="button"
+                    class="nav-toggle"
+                    aria-controls="site-nav-panel"
+                    aria-expanded="false"
+                    aria-label="Open menu">
+                <span class="nav-toggle-bar" aria-hidden="true"></span>
+                <span class="nav-toggle-bar" aria-hidden="true"></span>
+            </button>
+
+            <div class="site-header-panel" id="site-nav-panel">
+                <nav class="site-nav" aria-label="Main">
+                    <a href="/mytesla/"
+                       class="nav-link{% if request.url.path == '/mytesla/' %} is-active{% endif %}">MyTesla</a>
+                </nav>
+                <a class="header-cta" href="https://github.com/thatjakewang" target="_blank" rel="noopener noreferrer">GitHub</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer>
+            <p>&copy; {{ current_year() }} Jake Wang</p>
+        </footer>
+    </div>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

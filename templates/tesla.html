@@ -1,0 +1,100 @@
+{# Tesla cost dashboard (pages.tesla_dashboard). The template only lays out
+   sections and empty <canvas> slots; static/js/tesla.js fetches all data
+   client-side from the API and draws it with the shared builders in
+   static/js/dashboard.js, so the page stays up without a redeploy when new
+   records land in the API. #}
+{% extends 'base.html' %}
+{% from '_kpi.html' import kpi_grid %}
+
+{% block content %}
+<section class="intro">
+    <h1>Tesla Cost Tracker</h1>
+    <p class="subtitle">2024 Model 3 Highland · Standard Range · live ownership costs</p>
+</section>
+
+<section class="dashboard-section">
+    <h2 class="dashboard-section-title">Current Stats</h2>
+
+    {{ kpi_grid([
+        ("total-cost", "Total Cost", "all-time"),
+        ("odometer-km", "Odometer", "km driven"),
+        ("cost-per-km", "Cost / km", "NTD per km"),
+        ("charging-cost", "Charging Cost", "all-time"),
+        ("energy-kwh", "Energy Charged", "kWh total"),
+        ("avg-price", "Avg Price", "NTD / kWh"),
+    ], "cols-3") }}
+</section>
+
+<section class="dashboard-section">
+    <h2 class="dashboard-section-title">Recent Charging Sessions</h2>
+    <p class="dashboard-meta" id="recent-charging-meta">Latest Supercharger / home charges</p>
+    <div id="recent-charging">Loading...</div>
+</section>
+
+<section class="dashboard-section">
+    <h2 class="dashboard-section-title">Recent Car Expenses</h2>
+    <p class="dashboard-meta" id="recent-expenses-meta">Insurance, maintenance, tolls, etc.</p>
+    <div id="recent-car-expenses">Loading...</div>
+</section>
+
+<section class="dashboard-section">
+    <h2 class="dashboard-section-title">Spending by Category</h2>
+    <p class="dashboard-meta">All-time cost breakdown</p>
+    <div class="dashboard-chart">
+        <canvas id="costBreakdownChart" role="img" aria-label="Bar chart: all-time cost breakdown by spending category"></canvas>
+    </div>
+</section>
+
+<section class="dashboard-section">
+    <h2 class="dashboard-section-title">Charging by Provider</h2>
+    <p class="dashboard-meta">Total spent &amp; average price per kWh</p>
+    <div class="dashboard-chart">
+        <canvas id="providerChart" role="img" aria-label="Combined bar and line chart: total spent and average price per kWh by charging provider"></canvas>
+    </div>
+</section>
+
+<section class="dashboard-section">
+    <h2 class="dashboard-section-title">Charging Cost Distribution</h2>
+    <p class="dashboard-meta">Each dot is one session — kWh vs. cost, colored by provider</p>
+    <div class="dashboard-chart">
+        <canvas id="chargingScatterChart" role="img" aria-label="Scatter plot: each charging session's energy in kWh versus cost, colored by provider"></canvas>
+    </div>
+</section>
+
+<section class="dashboard-section">
+    <h2 class="dashboard-section-title">Cost per Session Distribution</h2>
+    <p class="dashboard-meta">How often each range occurs — reveals left/right skew</p>
+    <select id="histogramMetric" class="dashboard-select" aria-label="Histogram metric">
+        <option value="amount" selected>Cost per session (NTD)</option>
+        <option value="kwh">Energy per session (kWh)</option>
+        <option value="price">Price (NTD/kWh)</option>
+    </select>
+    <div class="dashboard-chart">
+        <canvas id="chargingHistogram" role="img" aria-label="Histogram: distribution of charging sessions by the selected metric"></canvas>
+    </div>
+</section>
+
+<section class="dashboard-section">
+    <h2 class="dashboard-section-title">Monthly Charging Trend</h2>
+    <p class="dashboard-meta">Monthly spending &amp; average price per kWh</p>
+    <div class="dashboard-chart">
+        <canvas id="trendChart" role="img" aria-label="Combined bar and line chart: monthly charging spend and average price per kWh over time"></canvas>
+    </div>
+</section>
+
+<section class="dashboard-section">
+    <h2 class="dashboard-section-title">Cumulative Cost</h2>
+    <p class="dashboard-meta">Total ownership cost over time</p>
+    <div class="dashboard-chart">
+        <canvas id="cumulativeCostChart" role="img" aria-label="Line chart: cumulative total ownership cost over time"></canvas>
+    </div>
+</section>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ static_url('js/vendor/chart.umd.min.js') }}" defer></script>
+<script src="{{ static_url('js/vendor/chartjs-plugin-datalabels.min.js') }}" defer></script>
+<script src="{{ static_url('js/dashboard.js') }}" defer></script>
+<script src="{{ static_url('js/tesla.js') }}" defer></script>
+{% endblock %}

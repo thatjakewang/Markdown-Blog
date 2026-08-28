@@ -35,6 +35,16 @@ def test_dashboard_includes_all_charts(client):
         assert canvas_id in html, f"missing canvas #{canvas_id}"
 
 
+def test_dashboard_includes_period_and_coverage_controls(client):
+    html = client.get("/mytesla/").text
+    for element_id in (
+        "period-total-cost", "period-energy-cost-km", "period-change",
+        "coverage-charging", "coverage-odometer", "provider-details",
+    ):
+        assert f'id="{element_id}"' in html
+    assert 'data-period="trailing_90_days"' in html
+
+
 def test_dashboard_calls_the_api_on_this_origin(client):
     """The merged service serves both halves, so the JS must stay relative."""
     js = client.get("/static/js/tesla.js").text

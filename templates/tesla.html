@@ -10,6 +10,7 @@
 <section class="intro">
     <h1>Tesla Cost Tracker</h1>
     <p class="subtitle">2024 Model 3 Highland · Standard Range · live ownership costs</p>
+    <p class="dashboard-meta data-updated" id="data-updated">Checking latest data...</p>
 </section>
 
 <section class="dashboard-section">
@@ -18,11 +19,45 @@
     {{ kpi_grid([
         ("total-cost", "Total Cost", "all-time"),
         ("odometer-km", "Odometer", "km driven"),
-        ("cost-per-km", "Cost / km", "NTD per km"),
+        ("cost-per-km", "Total Cost / km", "all recorded costs"),
+        ("charging-cost-per-km", "Energy Cost / km", "charging only"),
+        ("non-charging-cost-per-km", "Other Cost / km", "insurance, tolls, etc."),
         ("charging-cost", "Charging Cost", "all-time"),
-        ("energy-kwh", "Energy Charged", "kWh total"),
-        ("avg-price", "Avg Price", "NTD / kWh"),
+        ("non-charging-cost", "Other Costs", "all-time"),
+        ("avg-price", "Avg Price", "effective NTD / kWh"),
     ], "cols-3") }}
+    <p class="dashboard-note">All-time per-km figures use the current odometer as the denominator.</p>
+</section>
+
+<section class="dashboard-section">
+    <div class="dashboard-heading-row">
+        <div>
+            <h2 class="dashboard-section-title">Period Performance</h2>
+            <p class="dashboard-meta" id="period-range">Loading period...</p>
+        </div>
+        <div class="period-tabs" role="group" aria-label="Performance period">
+            <button type="button" class="period-tab is-active" data-period="current_month">This month</button>
+            <button type="button" class="period-tab" data-period="trailing_90_days">Last 90 days</button>
+        </div>
+    </div>
+    {{ kpi_grid([
+        ("period-total-cost", "Total Cost", "selected period"),
+        ("period-km", "Distance", "odometer delta"),
+        ("period-energy-cost-km", "Energy Cost / km", "charging only"),
+        ("period-total-cost-km", "Total Cost / km", "all recorded costs"),
+        ("period-efficiency", "Charged Energy", "kWh / 100 km"),
+        ("period-change", "vs. Prior Month", "comparable cost / km"),
+    ], "cols-3") }}
+    <p class="dashboard-note">Charged energy may not be consumed in the same period; the 90-day view reduces timing noise.</p>
+</section>
+
+<section class="dashboard-section data-coverage" aria-labelledby="coverage-title">
+    <h2 class="dashboard-section-title" id="coverage-title">Data Coverage</h2>
+    <div class="coverage-grid">
+        <p><span>Charging records</span><strong id="coverage-charging">Loading...</strong></p>
+        <p><span>Expense records</span><strong id="coverage-expenses">Loading...</strong></p>
+        <p><span>Odometer records</span><strong id="coverage-odometer">Loading...</strong></p>
+    </div>
 </section>
 
 <section class="dashboard-section">
@@ -47,10 +82,11 @@
 
 <section class="dashboard-section">
     <h2 class="dashboard-section-title">Charging by Provider</h2>
-    <p class="dashboard-meta">Total spent &amp; average price per kWh</p>
+    <p class="dashboard-meta">Total spent &amp; effective price (including free charging)</p>
     <div class="dashboard-chart">
         <canvas id="providerChart" role="img" aria-label="Combined bar and line chart: total spent and average price per kWh by charging provider"></canvas>
     </div>
+    <div id="provider-details" class="provider-details">Loading provider details...</div>
 </section>
 
 <section class="dashboard-section">

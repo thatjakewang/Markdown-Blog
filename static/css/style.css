@@ -569,6 +569,113 @@ footer {
     font-style: normal;
 }
 
+.data-updated {
+    margin-bottom: 0;
+}
+
+.dashboard-note {
+    margin: 8px 0 0;
+    color: var(--meta-color);
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.dashboard-heading-row {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 16px;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 20px;
+}
+
+.dashboard-heading-row .dashboard-section-title {
+    border: 0;
+    margin: 0 0 2px;
+    padding: 0;
+}
+
+.dashboard-heading-row .dashboard-meta {
+    margin: 0 0 10px;
+}
+
+.period-tabs {
+    display: flex;
+    gap: 4px;
+    padding-bottom: 10px;
+}
+
+.period-tab {
+    border: 1px solid var(--code-border);
+    border-radius: 999px;
+    background: var(--bg-color);
+    color: var(--muted-color);
+    padding: 6px 11px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.period-tab:hover,
+.period-tab.is-active {
+    border-color: var(--heading-color);
+    color: var(--heading-color);
+    background: var(--subtle-bg);
+}
+
+.period-tab:focus-visible {
+    outline: 2px solid var(--heading-color);
+    outline-offset: 2px;
+}
+
+.coverage-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.coverage-grid p {
+    margin: 0;
+    padding: 14px;
+    border-left: 2px solid var(--code-border);
+    font-size: 12px;
+}
+
+.coverage-grid span,
+.coverage-grid strong {
+    display: block;
+}
+
+.coverage-grid span {
+    color: var(--meta-color);
+    margin-bottom: 4px;
+}
+
+.coverage-grid strong {
+    color: var(--heading-color);
+    font-weight: 600;
+}
+
+.provider-details {
+    margin-top: 24px;
+    overflow-x: auto;
+}
+
+@media (max-width: 620px) {
+    .dashboard-heading-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .period-tabs {
+        padding-bottom: 14px;
+    }
+
+    .coverage-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Minimal table — only horizontal dividers, no full grid */
 .dashboard-table {
     width: 100%;

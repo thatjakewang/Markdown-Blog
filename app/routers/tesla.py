@@ -5,7 +5,8 @@ Shortcuts / automation). All monetary values are stored as integers and kWh as
 floats. The id column (SERIAL) provides stable ordering for /recent endpoints.
 """
 
-from datetime import date
+from calendar import monthrange
+from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -85,11 +86,112 @@ def get_stats(db: Session = Depends(get_db)):
     return {
         "total_cost": total_cost,
         "charging_cost": charging_cost,
+        "non_charging_cost": car_expense_total,
         "energy_kwh": round(energy_kwh, 2),
         "avg_price_per_kwh": avg_price_per_kwh,
         "odometer_km": odometer_km,
         "cost_per_km": cost_per_km,
+        "charging_cost_per_km": (
+            round(charging_cost / odometer_km, 2) if odometer_km else 0
+        ),
+        "non_charging_cost_per_km": (
+            round(car_expense_total / odometer_km, 2) if odometer_km else 0
+        ),
     }
+
+
+@router.get("/data-coverage")
+def get_data_coverage(db: Session = Depends(get_db)):
+    """Return collection start dates and the most recent recorded activity."""
+    row = db.execute(text("""
+        SELECT
+            (SELECT MIN(charge_date) FROM charging_records) AS charging_start_date,
+            (SELECT MIN(date) FROM car_expenses) AS expenses_start_date,
+            (SELECT MIN(reading_date) FROM odometer_readings) AS odometer_start_date,
+            GREATEST(
+                (SELECT MAX(charge_date) FROM charging_records),
+                (SELECT MAX(date) FROM car_expenses),
+                (SELECT MAX(reading_date) FROM odometer_readings)
+            ) AS last_updated
+    """)).mappings().one()
+    return serialize_row(row)
+
+
+@router.get("/period-summary")
+def get_period_summary(db: Session = Depends(get_db)):
+    """Summarize this month, the previous month, and the trailing 90 days.
+
+    Distance is measured between the last odometer reading before a period and
+    the last reading within it. It is null when either boundary is unavailable.
+    """
+    today = get_today()
+    this_month = today.replace(day=1)
+    previous_month_end = this_month - timedelta(days=1)
+    previous_month = previous_month_end.replace(day=1)
+    # Compare MTD with the same number of elapsed days in the prior month.
+    previous_comparable_end = previous_month.replace(
+        day=min(today.day, monthrange(previous_month.year, previous_month.month)[1])
+    )
+    periods = (
+        ("current_month", this_month, today),
+        ("previous_month", previous_month, previous_comparable_end),
+        ("trailing_90_days", today - timedelta(days=89), today),
+    )
+    result = {}
+    query = text("""
+        SELECT
+            COALESCE((SELECT SUM(amount) FROM charging_records
+                      WHERE charge_date BETWEEN :start_date AND :end_date), 0) AS charging_cost,
+            COALESCE((SELECT SUM(kwh) FROM charging_records
+                      WHERE charge_date BETWEEN :start_date AND :end_date), 0) AS energy_kwh,
+            COALESCE((SELECT SUM(amount) FROM car_expenses
+                      WHERE date BETWEEN :start_date AND :end_date), 0) AS non_charging_cost,
+            (SELECT reading_km FROM odometer_readings
+             WHERE reading_date <= :end_date
+             ORDER BY reading_date DESC, id DESC LIMIT 1) AS ending_odometer,
+            (SELECT reading_km FROM odometer_readings
+             WHERE reading_date < :start_date
+             ORDER BY reading_date DESC, id DESC LIMIT 1) AS starting_odometer
+    """)
+    for key, start, end in periods:
+        row = db.execute(
+            query, {"start_date": start, "end_date": end}
+        ).mappings().one()
+        charging_cost = float(row["charging_cost"] or 0)
+        non_charging_cost = float(row["non_charging_cost"] or 0)
+        energy_kwh = float(row["energy_kwh"] or 0)
+        start_km = row["starting_odometer"]
+        end_km = row["ending_odometer"]
+        km = (
+            int(end_km) - int(start_km)
+            if start_km is not None and end_km is not None
+            else None
+        )
+        if km is not None and km <= 0:
+            km = None
+        total_cost = charging_cost + non_charging_cost
+        result[key] = {
+            "start_date": start.isoformat(),
+            "end_date": end.isoformat(),
+            "is_partial": end == today,
+            "charging_cost": charging_cost,
+            "non_charging_cost": non_charging_cost,
+            "total_cost": total_cost,
+            "energy_kwh": round(energy_kwh, 2),
+            "km_driven": km,
+            "energy_cost_per_km": round(charging_cost / km, 2) if km else None,
+            "total_cost_per_km": round(total_cost / km, 2) if km else None,
+            "kwh_per_100km": round(energy_kwh / km * 100, 1) if km else None,
+        }
+    current = result["current_month"]
+    previous = result["previous_month"]
+    current["cost_per_km_change_pct"] = (
+        round((current["total_cost_per_km"] / previous["total_cost_per_km"] - 1) * 100, 1)
+        if current["total_cost_per_km"] is not None
+        and previous["total_cost_per_km"] not in (None, 0)
+        else None
+    )
+    return result
 
 
 @router.get("/expenses")
@@ -118,7 +220,12 @@ def get_charging_by_provider(db: Session = Depends(get_db)):
             provider,
             COALESCE(SUM(kwh), 0) AS total_kwh,
             COALESCE(SUM(amount), 0) AS total_amount,
-            COALESCE(SUM(amount) / NULLIF(SUM(kwh), 0), 0) AS avg_price_per_kwh
+            COALESCE(SUM(amount) / NULLIF(SUM(kwh), 0), 0) AS avg_price_per_kwh,
+            COALESCE(SUM(kwh) FILTER (WHERE amount > 0), 0) AS paid_kwh,
+            SUM(amount) FILTER (WHERE amount > 0)
+                / NULLIF(SUM(kwh) FILTER (WHERE amount > 0), 0) AS paid_avg_price_per_kwh,
+            COALESCE(SUM(kwh) FILTER (WHERE amount = 0), 0) AS free_kwh,
+            COUNT(*) FILTER (WHERE amount = 0) AS free_sessions
         FROM charging_records
         GROUP BY provider
         ORDER BY total_amount DESC
@@ -217,7 +324,10 @@ def get_monthly_summary(db: Session = Depends(get_db)):
             "month": month,
             "km_driven": km,
             "total_cost": total_cost,
+            "charging_cost": charging_amount,
+            "non_charging_cost": expenses_by_month.get(month, 0),
             "cost_per_km": round(total_cost / km, 2) if km else None,
+            "energy_cost_per_km": round(charging_amount / km, 2) if km else None,
             "kwh": round(kwh, 1),
             "kwh_per_100km": round(kwh / km * 100, 1) if km else None,
         })

@@ -26,10 +26,13 @@ class TestStats:
         assert body == {
             "total_cost": 42000.0,
             "charging_cost": 12000.0,
+            "non_charging_cost": 30000.0,
             "energy_kwh": 2400.5,
             "avg_price_per_kwh": 5.0,
             "odometer_km": 24000,
             "cost_per_km": 1.75,
+            "charging_cost_per_km": 0.5,
+            "non_charging_cost_per_km": 1.25,
         }
 
     def test_empty_history_falls_back_to_seed_odometer(self, client_for, monkeypatch):
@@ -66,16 +69,24 @@ class TestMonthlySummary:
         assert body == [
             # first reading month: no previous reading, so no km attributed
             {"month": "2026-01", "km_driven": None, "total_cost": 500,
-             "cost_per_km": None, "kwh": 100.0, "kwh_per_100km": None},
+             "charging_cost": 500, "non_charging_cost": 0,
+             "cost_per_km": None, "energy_cost_per_km": None,
+             "kwh": 100.0, "kwh_per_100km": None},
             # expense-only month
             {"month": "2026-02", "km_driven": None, "total_cost": 2000,
-             "cost_per_km": None, "kwh": 0.0, "kwh_per_100km": None},
+             "charging_cost": 0, "non_charging_cost": 2000,
+             "cost_per_km": None, "energy_cost_per_km": None,
+             "kwh": 0.0, "kwh_per_100km": None},
             # the Jan->Mar reading gap is attributed to March (the later month)
             {"month": "2026-03", "km_driven": 2000, "total_cost": 600,
-             "cost_per_km": 0.3, "kwh": 150.0, "kwh_per_100km": 7.5},
+             "charging_cost": 600, "non_charging_cost": 0,
+             "cost_per_km": 0.3, "energy_cost_per_km": 0.3,
+             "kwh": 150.0, "kwh_per_100km": 7.5},
             # reading-only month still appears, with zero costs
             {"month": "2026-04", "km_driven": 1000, "total_cost": 0,
-             "cost_per_km": 0.0, "kwh": 0.0, "kwh_per_100km": 0.0},
+             "charging_cost": 0, "non_charging_cost": 0,
+             "cost_per_km": 0.0, "energy_cost_per_km": 0.0,
+             "kwh": 0.0, "kwh_per_100km": 0.0},
         ]
 
     def test_no_data_returns_empty_list(self, client_for):
@@ -179,6 +190,10 @@ class TestReadEndpoints:
             "total_kwh": Decimal("240.50"),
             "total_amount": Decimal("1200"),
             "avg_price_per_kwh": Decimal("4.9896"),
+            "paid_kwh": Decimal("200.00"),
+            "paid_avg_price_per_kwh": Decimal("6.00"),
+            "free_kwh": Decimal("40.50"),
+            "free_sessions": 2,
         }])
         body = client_for(session).get("/api/tesla/charging/providers").json()
         assert body == [{
@@ -186,7 +201,25 @@ class TestReadEndpoints:
             "total_kwh": 240.5,
             "total_amount": 1200,       # integral Decimal -> int
             "avg_price_per_kwh": 4.99,  # rounded to 2 decimals
+            "paid_kwh": 200,
+            "paid_avg_price_per_kwh": 6,
+            "free_kwh": 40.5,
+            "free_sessions": 2,
         }]
+
+    def test_data_coverage_serializes_dates(self, client_for):
+        session = FakeSession(rows=[{
+            "charging_start_date": date(2024, 12, 28),
+            "expenses_start_date": date(2024, 12, 1),
+            "odometer_start_date": date(2026, 6, 1),
+            "last_updated": date(2026, 8, 28),
+        }])
+        assert client_for(session).get("/api/tesla/data-coverage").json() == {
+            "charging_start_date": "2024-12-28",
+            "expenses_start_date": "2024-12-01",
+            "odometer_start_date": "2026-06-01",
+            "last_updated": "2026-08-28",
+        }
 
     def test_sessions_serialize_dates(self, client_for):
         session = FakeSession(rows=[
@@ -202,3 +235,33 @@ class TestReadEndpoints:
             "/api/tesla/odometer/current"
         ).json()
         assert body == {"odometer_km": 24123}
+
+
+class TestPeriodSummary:
+    def test_period_metrics_and_month_over_month_change(self, client_for):
+        session = FakeSession(results=[
+            FakeResult(rows=[{"charging_cost": 200, "energy_kwh": 40,
+                              "non_charging_cost": 100, "starting_odometer": 1000,
+                              "ending_odometer": 1100}]),
+            FakeResult(rows=[{"charging_cost": 150, "energy_kwh": 30,
+                              "non_charging_cost": 50, "starting_odometer": 900,
+                              "ending_odometer": 1000}]),
+            FakeResult(rows=[{"charging_cost": 500, "energy_kwh": 100,
+                              "non_charging_cost": 100, "starting_odometer": 800,
+                              "ending_odometer": 1100}]),
+        ])
+        body = client_for(session).get("/api/tesla/period-summary").json()
+        assert body["current_month"]["energy_cost_per_km"] == 2.0
+        assert body["current_month"]["total_cost_per_km"] == 3.0
+        assert body["current_month"]["cost_per_km_change_pct"] == 50.0
+        assert body["trailing_90_days"]["km_driven"] == 300
+
+    def test_missing_odometer_boundary_returns_null_efficiency(self, client_for):
+        row = {"charging_cost": 100, "energy_kwh": 20, "non_charging_cost": 0,
+               "starting_odometer": None, "ending_odometer": 1000}
+        session = FakeSession(results=[
+            FakeResult(rows=[row]), FakeResult(rows=[row]), FakeResult(rows=[row]),
+        ])
+        body = client_for(session).get("/api/tesla/period-summary").json()
+        assert body["current_month"]["km_driven"] is None
+        assert body["current_month"]["total_cost_per_km"] is None

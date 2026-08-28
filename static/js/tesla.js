@@ -10,12 +10,58 @@ loadJSON(`${API_BASE}/api/tesla/stats`, "Tesla stats", data => {
     setText("total-cost", `NT$ ${data.total_cost.toLocaleString()}`);
     setText("odometer-km", `${data.odometer_km.toLocaleString()} km`);
     setText("cost-per-km", `NT$ ${data.cost_per_km}`);
+    setText("charging-cost-per-km", `NT$ ${data.charging_cost_per_km}`);
+    setText("non-charging-cost-per-km", `NT$ ${data.non_charging_cost_per_km}`);
     setText("charging-cost", `NT$ ${data.charging_cost.toLocaleString()}`);
-    setText("energy-kwh", `${data.energy_kwh.toLocaleString()} kWh`);
+    setText("non-charging-cost", `NT$ ${data.non_charging_cost.toLocaleString()}`);
     setText("avg-price", `NT$ ${data.avg_price_per_kwh}`);
 }, () => setKpiErrors([
     "total-cost", "odometer-km", "cost-per-km",
-    "charging-cost", "energy-kwh", "avg-price"
+    "charging-cost-per-km", "non-charging-cost-per-km",
+    "charging-cost", "non-charging-cost", "avg-price"
+]));
+
+const formatDate = value => value || "No records";
+const formatMetric = (value, suffix = "") =>
+    value == null ? "Not enough data" : `${value.toLocaleString()}${suffix}`;
+
+// Collection windows make null efficiency values understandable at a glance.
+loadJSON(`${API_BASE}/api/tesla/data-coverage`, "data coverage", data => {
+    setText("data-updated", `Data last updated ${formatDate(data.last_updated)}`);
+    setText("coverage-charging", `Since ${formatDate(data.charging_start_date)}`);
+    setText("coverage-expenses", `Since ${formatDate(data.expenses_start_date)}`);
+    setText("coverage-odometer", `Since ${formatDate(data.odometer_start_date)}`);
+}, () => {
+    setText("data-updated", "Latest update unavailable");
+    ["coverage-charging", "coverage-expenses", "coverage-odometer"]
+        .forEach(id => setText(id, "Unavailable"));
+});
+
+// This-month and rolling-90-day KPIs share one payload and switch instantly.
+loadJSON(`${API_BASE}/api/tesla/period-summary`, "period performance", periods => {
+    const renderPeriod = key => {
+        const data = periods[key];
+        setText("period-range", `${data.start_date} to ${data.end_date}${data.is_partial ? " · partial period" : ""}`);
+        setText("period-total-cost", `NT$ ${data.total_cost.toLocaleString()}`);
+        setText("period-km", formatMetric(data.km_driven, " km"));
+        setText("period-energy-cost-km", data.energy_cost_per_km == null ? "Not enough data" : `NT$ ${data.energy_cost_per_km}`);
+        setText("period-total-cost-km", data.total_cost_per_km == null ? "Not enough data" : `NT$ ${data.total_cost_per_km}`);
+        setText("period-efficiency", formatMetric(data.kwh_per_100km, " kWh"));
+        const change = key === "current_month" ? data.cost_per_km_change_pct : null;
+        setText("period-change", change == null ? "Not comparable" : `${change > 0 ? "+" : ""}${change}%`);
+    };
+
+    renderPeriod("current_month");
+    document.querySelectorAll(".period-tab").forEach(button => {
+        button.addEventListener("click", () => {
+            document.querySelectorAll(".period-tab").forEach(tab => tab.classList.remove("is-active"));
+            button.classList.add("is-active");
+            renderPeriod(button.dataset.period);
+        });
+    });
+}, () => setKpiErrors([
+    "period-total-cost", "period-km", "period-energy-cost-km",
+    "period-total-cost-km", "period-efficiency", "period-change"
 ]));
 
 // Spending by category (all-time)
@@ -68,6 +114,25 @@ loadChart(`${API_BASE}/api/tesla/charging/providers`, "providerChart",
         yTicksInThousands: true,
         moneyTooltip: true
     });
+
+    buildTable(
+        "provider-details",
+        [
+            { label: "Provider", cls: "" },
+            { label: "Effective", cls: "col-amount" },
+            { label: "Paid only", cls: "col-amount" },
+            { label: "Free energy", cls: "col-amount" },
+        ],
+        data,
+        row => [
+            { value: row.provider, cls: "" },
+            { value: `NT$ ${row.avg_price_per_kwh}/kWh`, cls: "col-amount" },
+            { value: row.paid_avg_price_per_kwh == null
+                ? "No paid sessions"
+                : `NT$ ${row.paid_avg_price_per_kwh}/kWh`, cls: "col-amount" },
+            { value: `${row.free_kwh.toLocaleString()} kWh (${row.free_sessions})`, cls: "col-amount" },
+        ]
+    );
 });
 
 // Per-session charging data: fetched once, feeds both the scatter chart

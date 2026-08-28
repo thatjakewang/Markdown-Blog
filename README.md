@@ -113,6 +113,8 @@ records can be reviewed and corrected explicitly before rerunning it.
 |--------|------|-------------|
 | GET | `/health` | Health check (pings the DB; 503 if unreachable) |
 | GET | `/api/tesla/stats` | Total cost, charging cost, cost per km |
+| GET | `/api/tesla/period-summary` | This month, comparable prior month, and trailing-90-day KPIs |
+| GET | `/api/tesla/data-coverage` | Collection start dates and latest recorded activity |
 | GET | `/api/tesla/monthly-summary` | Month-by-month cost & efficiency (km driven, cost/km, kWh/100km) |
 | GET | `/api/tesla/expenses` | Car expenses grouped by item |
 | GET | `/api/tesla/expenses/recent` | Recent 10 car expenses (newest first) |

@@ -6,31 +6,31 @@
 -- Keep this file in sync whenever a migration changes the schema.
 --
 -- Notes:
--- - The older Tesla tables (charging_records, car_expenses) predate the API
---   and allow NULLs; the API itself always writes every column.
+-- - Required fields are NOT NULL and numeric measurements must be non-negative,
+--   matching the validation performed by the API.
 -- - created_at is not read by the API (kept for auditing); /recent ordering
 --   uses the record's date column + id instead.
 
 CREATE TABLE IF NOT EXISTS charging_records (
     id SERIAL PRIMARY KEY,
-    charge_date date,
-    provider text,
-    amount bigint,
-    kwh double precision,
+    charge_date date NOT NULL,
+    provider text NOT NULL CHECK (char_length(provider) BETWEEN 1 AND 100),
+    amount bigint NOT NULL CHECK (amount >= 0),
+    kwh double precision NOT NULL CHECK (kwh >= 0),
     created_at timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS car_expenses (
     id SERIAL PRIMARY KEY,
-    date date,
-    item text,
-    amount bigint,
+    date date NOT NULL,
+    item text NOT NULL CHECK (char_length(item) BETWEEN 1 AND 100),
+    amount bigint NOT NULL CHECK (amount >= 0),
     created_at timestamp DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS odometer_readings (
     id SERIAL PRIMARY KEY,
-    reading_km integer NOT NULL,
+    reading_km integer NOT NULL CHECK (reading_km >= 0),
     reading_date date NOT NULL,
     created_at timestamp DEFAULT CURRENT_TIMESTAMP
 );

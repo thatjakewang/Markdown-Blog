@@ -83,8 +83,7 @@ database with:
 psql "$DATABASE_URL" -f schema.sql
 ```
 
-Schema changes are delivered as one-off idempotent scripts in `migrations/`
-(they auto-load `DATABASE_URL` from the project-root `.env` via `python-dotenv`).
+Schema changes are delivered as migration scripts in `migrations/`.
 The workflow:
 
 1. Deploy code that works with both the old and the new schema.
@@ -93,13 +92,18 @@ The workflow:
    ```bash
    cd /var/www/main-site
    source .venv/bin/activate
-   python migrations/<script_name>.py
+   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/<script_name>.sql
    ```
 
 3. Update `schema.sql` to match, then delete the script — git history keeps the
    record. Applied so far: `add_tesla_recent_columns.py` (2026-06-03),
    `add_odometer_readings.py` (2026-06), `drop_payment_method.py` (by 2026-06-28),
    `drop_daily_expenses.py` (2026-08-28).
+
+Pending migration: `add_data_integrity_constraints.sql`. It adds `NOT NULL`,
+length, and non-negative numeric constraints that match API validation. It
+aborts without changing the schema if legacy rows violate those rules, so those
+records can be reviewed and corrected explicitly before rerunning it.
 
 ## Endpoints
 

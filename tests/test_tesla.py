@@ -84,6 +84,19 @@ class TestMonthlySummary:
         ])
         assert client_for(session).get("/api/tesla/monthly-summary").json() == []
 
+    def test_monthly_odometer_query_uses_latest_row_not_highest_reading(self, client_for):
+        """A lower correction entered later in a month must replace a bad high reading."""
+        session = FakeSession(results=[
+            FakeResult(rows=[]), FakeResult(rows=[]), FakeResult(rows=[]),
+        ])
+
+        client_for(session).get("/api/tesla/monthly-summary")
+
+        odometer_sql = str(session.calls[2][0])
+        assert "DISTINCT ON" in odometer_sql
+        assert "reading_date DESC, id DESC" in odometer_sql
+        assert "MAX(reading_km)" not in odometer_sql
+
 
 class TestWrites:
     def test_create_charging_record_envelope(self, client_for):

@@ -184,12 +184,11 @@ def get_monthly_summary(db: Session = Depends(get_db)):
     """)).mappings().all()
 
     odometer_rows = db.execute(text("""
-        SELECT
+        SELECT DISTINCT ON (DATE_TRUNC('month', reading_date))
             TO_CHAR(DATE_TRUNC('month', reading_date), 'YYYY-MM') AS month,
-            MAX(reading_km) AS reading_km
+            reading_km
         FROM odometer_readings
-        GROUP BY DATE_TRUNC('month', reading_date)
-        ORDER BY DATE_TRUNC('month', reading_date)
+        ORDER BY DATE_TRUNC('month', reading_date), reading_date DESC, id DESC
     """)).mappings().all()
 
     # km driven per month: delta between consecutive reading months

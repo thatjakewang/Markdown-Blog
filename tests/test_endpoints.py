@@ -1,5 +1,6 @@
-"""HTTP-level tests for the API half: health, auth, cache headers, gzip,
-rate limiting. The HTML pages are covered in test_pages.py.
+"""HTTP-level tests for the API half: health, api-key auth, cache headers, gzip,
+rate limiting. The HTML pages are covered in test_pages.py, and browser login in
+test_auth.py.
 
 All DB access goes through FakeSession — no real database is involved.
 TestRateLimit stays last in the file: it deliberately exhausts the budget
@@ -11,7 +12,7 @@ from datetime import date
 import pytest
 
 from app.main import API_CACHE_MAX_AGE, app
-from tests.conftest import TEST_API_KEY, FakeResult, FakeSession
+from tests.conftest import TEST_API_KEY, TEST_PASSWORD, FakeResult, FakeSession
 
 
 class TestHealth:
@@ -60,6 +61,34 @@ class TestAuth:
         body = response.json()
         assert body["status"] == "success"
         assert body["data"]["id"] == 1
+
+
+class TestApiKeyIsIndependentOfLogin:
+    """The two halves of auth must never become entangled.
+
+    Browser login (test_auth.py) exists for private pages; the write endpoints
+    are driven by iPhone Shortcuts and, later, an automated collector. Putting
+    those behind the session would mean teaching a script to POST a login form.
+    """
+
+    PROTECTED_PATH = "/api/tesla/car-expenses"
+    PAYLOAD = {"date": "2026-07-06", "item": "Insurance", "amount": 25000}
+
+    def test_write_succeeds_with_no_session_cookie(self, client_for):
+        session = FakeSession(results=[FakeResult(rows=[{"id": 2}])])
+        client = client_for(session)
+        assert "session" not in client.cookies
+        response = client.post(
+            self.PROTECTED_PATH, json=self.PAYLOAD, headers={"x-api-key": TEST_API_KEY}
+        )
+        assert response.status_code == 200
+
+    def test_a_session_alone_does_not_authorize_a_write(self, client_for):
+        """Being signed in must not silently grant the API key's privileges."""
+        client = client_for(FakeSession())
+        assert client.post("/login", data={"password": TEST_PASSWORD}).status_code == 200
+        response = client.post(self.PROTECTED_PATH, json=self.PAYLOAD)
+        assert response.status_code == 401
 
 
 class TestCacheHeaders:

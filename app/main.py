@@ -8,28 +8,33 @@ The real business logic lives in the routers; the page routes below only
 pick a template — every number on the dashboard is fetched client-side.
 """
 
-from datetime import date, timedelta
-from functools import lru_cache
-from pathlib import Path
+from datetime import timedelta
+from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.sessions import SessionMiddleware
 
+from app.auth import LoginRequired
+from app.config import get_settings
 from app.database import get_db
-from app.routers import tesla
+from app.limiter import limiter
+from app.routers import auth, tesla
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-STATIC_DIR = BASE_DIR / "static"
+# The Jinja environment and the rate limiter live in their own modules so the
+# routers can use them without importing this one back. static_url is re-exported
+# here because it was defined here historically.
+from app.templating import STATIC_DIR, static_url, templates  # noqa: F401
+
+settings = get_settings()
 
 app = FastAPI(
     title="Jake Wang",
@@ -43,50 +48,24 @@ app = FastAPI(
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-
-
-def _static_version(filename: str) -> int:
-    """File mtime, used as the ?v= cache-buster. 0 when the file is missing."""
-    try:
-        return int((STATIC_DIR / filename).stat().st_mtime)
-    except OSError:
-        return 0
-
-
-# stat() once per process; assets only change on redeploy, which restarts it.
-_cached_static_version = lru_cache(maxsize=None)(_static_version)
-
-
-def static_url(filename: str) -> str:
-    """/static URL plus ?v=<mtime>, which is what makes the long max-age safe."""
-    return f"/static/{filename}?v={_cached_static_version(filename)}"
-
-
-def current_year() -> int:
-    """Footer copyright year. A function, not a value, so a long-running
-    process doesn't keep serving the year it booted in."""
-    return date.today().year
-
-
-templates.env.globals["static_url"] = static_url
-templates.env.globals["current_year"] = current_year
-
 # Compress responses over 500 bytes (HTML pages and the growing JSON payloads).
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
-# Rate limiting: per-client-IP cap on every endpoint (in-memory storage — fine for
-# a single-process deployment). /health is exempt so monitors are never throttled.
-# The cap covers static assets too, and one page load pulls ~15 requests (CSS, JS,
-# favicons, then the dashboard's API calls), so it is set well above a browser's
-# burst rather than at the old API-only value.
-# Note: behind a reverse proxy, uvicorn needs --proxy-headers (and
-# --forwarded-allow-ips) so get_remote_address sees the real client IP.
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["600/minute"],
-    headers_enabled=True,
+# Browser login sessions: a signed cookie, no server-side session store. Lax
+# is what stands in for CSRF tokens here — a cross-site POST never carries the
+# cookie, and every form on this site is same-origin. https_only comes from
+# config because a local http dev server would otherwise never see the cookie
+# come back. See app/auth.py for the rest of the login story.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=settings.session_secret,
+    session_cookie="session",
+    max_age=settings.session_max_age,
+    same_site="lax",
+    https_only=settings.session_cookie_secure,
 )
+
+# Rate limiting: configured in app/limiter.py (the routers need it too).
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
@@ -100,6 +79,20 @@ API_CACHE_MAX_AGE = 30
 PAGE_CACHE_MAX_AGE = 300
 STATIC_CACHE_MAX_AGE = int(timedelta(days=365).total_seconds())
 
+# Paths whose responses belong to the signed-in user alone. Without this list the
+# generic "/api/ -> public, max-age=30" rule below would happily hand a shared
+# proxy a cacheable copy of private JSON — add every private prefix here at the
+# same time as the route that serves it.
+PRIVATE_PATH_PREFIXES = ("/login", "/logout")
+
+
+def is_private_path(path: str) -> bool:
+    """True for paths served only to a logged-in user (never publicly cacheable)."""
+    return any(
+        path == prefix or path.startswith(f"{prefix}/")
+        for prefix in PRIVATE_PATH_PREFIXES
+    )
+
 
 @app.middleware("http")
 async def add_response_headers(request: Request, call_next):
@@ -107,7 +100,8 @@ async def add_response_headers(request: Request, call_next):
 
     setdefault() throughout, so nginx can override any of these without a
     code change. Requests carrying x-api-key are never marked publicly
-    cacheable, since those responses are fetched with a personal key.
+    cacheable, since those responses are fetched with a personal key; neither
+    are private paths, nor anything that just issued a session cookie.
     """
     response = await call_next(request)
 
@@ -126,10 +120,15 @@ async def add_response_headers(request: Request, call_next):
     response.headers.setdefault("X-Robots-Tag", "noindex, nofollow")
 
     path = request.url.path
-    if (
+    if is_private_path(path):
+        response.headers.setdefault("Cache-Control", "private, no-store")
+    elif (
         request.method == "GET"
         and response.status_code == 200
         and "x-api-key" not in request.headers
+        # SessionMiddleware sits inside this one, so a Set-Cookie is already on
+        # the response by now: whatever it is, it is not shared-cacheable.
+        and "set-cookie" not in response.headers
     ):
         if path.startswith("/static/"):
             max_age = STATIC_CACHE_MAX_AGE
@@ -158,6 +157,19 @@ async def html_error_handler(request: Request, exc: StarletteHTTPException):
     template = "404.html" if exc.status_code == 404 else "500.html"
     return templates.TemplateResponse(
         request=request, name=template, status_code=exc.status_code
+    )
+
+
+@app.exception_handler(LoginRequired)
+async def login_required_handler(request: Request, exc: LoginRequired):
+    """Send a signed-out browser to the login page, remembering where it wanted to go.
+
+    require_login raises this instead of an HTTPException because
+    html_error_handler above would turn a 303 into a JSON body and drop the
+    Location header with it.
+    """
+    return RedirectResponse(
+        f"/login?{urlencode({'next': exc.next_path})}", status_code=303
     )
 
 
@@ -247,6 +259,9 @@ def tesla_dashboard(request: Request):
         context={"meta_title": "Tesla Cost Tracker – Jake Wang"},
     )
 
+
+# Browser login/logout. No prefix: these are site-level pages, not API endpoints.
+app.include_router(auth.router, tags=["Auth"])
 
 # Tesla cost tracking (public stats + protected writes for charging/car expenses)
 app.include_router(tesla.router, prefix="/api/tesla", tags=["Tesla"])

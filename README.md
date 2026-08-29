@@ -142,23 +142,33 @@ Schema changes are delivered as migration scripts in `migrations/`.
 The workflow:
 
 1. Deploy code that works with both the old and the new schema.
-2. Run the script on the production server:
+2. Run the script on the production server. `DATABASE_URL` lives in `.env`,
+   which the app reads at startup but never exports into the shell — activating
+   the venv does *not* set it. Pull it out with the same parser the app uses;
+   `source .env` breaks on any line that is not exactly `KEY=value`:
 
    ```bash
    cd /var/www/main-site
    source .venv/bin/activate
+   export DATABASE_URL="$(python -c "from dotenv import dotenv_values; print(dotenv_values('.env')['DATABASE_URL'])")"
    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f migrations/<script_name>.sql
    ```
 
 3. Update `schema.sql` to match, then delete the script — git history keeps the
    record. Applied so far: `add_tesla_recent_columns.py` (2026-06-03),
    `add_odometer_readings.py` (2026-06), `drop_payment_method.py` (by 2026-06-28),
-   `drop_daily_expenses.py` (2026-08-28).
+   `drop_daily_expenses.py` (2026-08-28),
+   `add_data_integrity_constraints.sql` (by 2026-08-29).
 
-Pending migration: `add_data_integrity_constraints.sql`. It adds `NOT NULL`,
-length, and non-negative numeric constraints that match API validation. It
-aborts without changing the schema if legacy rows violate those rules, so those
-records can be reviewed and corrected explicitly before rerunning it.
+No migrations are pending.
+
+To check whether a constraint-adding migration has already been applied, list
+what the tables actually carry:
+
+```bash
+psql "$DATABASE_URL" -c "SELECT conrelid::regclass AS tbl, conname
+  FROM pg_constraint WHERE contype = 'c' ORDER BY 1, 2;"
+```
 
 ## Endpoints
 

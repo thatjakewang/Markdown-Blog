@@ -15,6 +15,47 @@ metadata.
 - **Chart.js** (self-hosted) — client-side charts
 - **uvicorn** — ASGI server
 
+## Authentication
+
+Two separate mechanisms, on purpose. They must not be merged.
+
+| Client | What it is | Mechanism |
+|--------|-----------|-----------|
+| **Human**, in a browser | Reading private pages | Signed session cookie (`/login`) |
+| **Machine**, headless | iPhone Shortcuts, automated collectors | `x-api-key` header |
+
+An automated writer must never be pushed through the login form — that would
+only mean teaching a script to POST one. Conversely a session cookie grants no
+write access: `x-api-key` is still required for every POST.
+
+There is exactly one user, so there is **no users table** and no registration.
+The password lives in `.env` as an scrypt hash (`hashlib.scrypt`, standard
+library) and the session is a signed cookie, so nothing is stored server-side.
+CSRF is handled by `SameSite=Lax` rather than tokens: every form here is
+same-origin, and a cross-site POST never carries the cookie. `POST /login` is
+capped at 5/minute, far below the site-wide 600/minute.
+
+Generate the two secrets and paste them into `.env`:
+
+```bash
+python -m app.auth
+```
+
+Guard a new private route by depending on `require_login`; add its path prefix to
+`PRIVATE_PATH_PREFIXES` in `app/main.py` at the same time, or the generic
+`/api/*` cache rule will mark its responses publicly cacheable:
+
+```python
+from app.auth import require_login
+
+@router.get("/api/papers")
+def list_papers(_=Depends(require_login)):
+    ...
+```
+
+Signed-out requests are split by client, matching the error handling: a page
+request gets a 303 to `/login?next=…`, an `/api/` request gets a JSON 401.
+
 ## Project Layout
 
 ```text
@@ -22,10 +63,13 @@ app/
   main.py          # FastAPI app: static mount, page routes, middleware, router mounting
   config.py        # pydantic-settings configuration (.env)
   database.py      # engine + per-request session
-  dependencies.py  # x-api-key verification
+  dependencies.py  # x-api-key verification (machine clients)
+  auth.py          # browser login: password hashing, session, require_login guard
+  limiter.py       # the shared rate limiter (routers need it, so not in main.py)
+  templating.py    # the Jinja environment + its globals (same reason)
   utils.py         # row serialization, response envelope, date helpers
-  routers/         # thin HTTP route handlers (tesla)
-templates/         # Jinja page shells (base + home + dashboard + errors)
+  routers/         # thin HTTP route handlers (tesla, auth)
+templates/         # Jinja page shells (base + home + dashboard + login + errors)
 static/            # CSS, JS (dashboard builders + data loaders), favicons
 tests/             # pytest suite (no real DB)
 schema.sql         # reference DDL for rebuilding the database
@@ -42,9 +86,20 @@ All configuration is loaded via `pydantic-settings` from `.env` (or environment 
 ```env
 DATABASE_URL=postgresql://user:password@host:port/dbname
 SHORTCUT_API_KEY=your_api_key
+SESSION_SECRET=your_session_secret          # signs the session cookie
+ADMIN_PASSWORD_HASH=scrypt$<salt>$<hash>    # from `python -m app.auth`
+SESSION_COOKIE_SECURE=true                  # set false for local http only
 APP_TIMEZONE=Asia/Taipei
 TESLA_ODOMETER_KM=21471
 ```
+
+`SESSION_SECRET` and `ADMIN_PASSWORD_HASH` have no defaults — the app refuses to
+boot without them rather than running on a guessable secret. `SESSION_MAX_AGE`
+is optional and defaults to 14 days.
+
+When developing locally over `http://`, set `SESSION_COOKIE_SECURE=false`;
+otherwise the browser will not send the cookie back and login silently never
+sticks.
 
 ## Setup & Run
 
@@ -112,6 +167,9 @@ records can be reviewed and corrected explicitly before rerunning it.
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/health` | Health check (pings the DB; 503 if unreachable) |
+| GET | `/login` | Sign-in page (303 to `?next=` if already signed in) |
+| POST | `/login` | Form login — `password`, optional `next`. Rate limited 5/min |
+| POST | `/logout` | Clear the session (POST only, so no link can sign you out) |
 | GET | `/api/tesla/stats` | Total cost, charging cost, cost per km |
 | GET | `/api/tesla/period-summary` | This month, comparable prior month, and trailing-90-day KPIs |
 | GET | `/api/tesla/data-coverage` | Collection start dates and latest recorded activity |
@@ -200,6 +258,7 @@ automatically follows the latest reading.
 |------|-------------|
 | `/` | Home — intro, project cards, skills |
 | `/mytesla/` | Tesla cost dashboard (fetches `/api/tesla/*` client-side) |
+| `/login` | Sign-in (see Authentication above) |
 
 ## Caching
 
@@ -210,8 +269,12 @@ automatically follows the latest reading.
 | `/static/*` | 1 year | URLs carry a `?v=<mtime>` cache-buster, so this is safe |
 | `/api/*` | 30s | Shortcuts entries should reach the dashboard promptly |
 | pages | 5min | They only change on redeploy |
+| private paths | `no-store` | Belong to one signed-in user |
 
-Requests carrying `x-api-key` are never marked publicly cacheable.
+Requests carrying `x-api-key` are never marked publicly cacheable, nor are
+responses that set a session cookie, nor anything matching
+`PRIVATE_PATH_PREFIXES` in `app/main.py` — without that last rule the generic
+`/api/*` entry above would hand a shared proxy a cacheable copy of private JSON.
 
 There is **no CORS layer**: pages and API share an origin, so nothing cross-origin
 happens. A test pins this, since adding CORS back would quietly re-open the API to

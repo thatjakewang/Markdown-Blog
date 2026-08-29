@@ -34,13 +34,13 @@ pydantic==2.13.4
     #   pydantic-settings
 pydantic-core==2.46.4
     # via pydantic
-pydantic-settings==2.14.1
+pydantic-settings==2.14.2
     # via -r requirements.txt
 python-dotenv==1.2.2
     # via
     #   -r requirements.txt
     #   pydantic-settings
-python-multipart==0.0.20
+python-multipart==0.0.31
     # via -r requirements.txt
 slowapi==0.1.9
     # via -r requirements.txt

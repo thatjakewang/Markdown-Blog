@@ -1,5 +1,5 @@
 /**
- * dashboard.js — shared utilities for dashboard pages
+ * Shared utilities for dashboard pages
  *
  * Contains:
  *   - fetch / error helpers
@@ -129,9 +129,17 @@ async function loadJSON(url, label, render, onError) {
     }
 }
 
-/** loadJSON specialized for a single chart: errors land in the chart container */
-function loadChart(url, canvasId, errorMessage, render) {
-    return loadJSON(url, errorMessage, render, () => showError(canvasId, errorMessage));
+/** Draw one widget from an already-fetched payload, isolating its failures.
+    Pages that fetch every widget in one request need this: without it a single
+    renderer throwing would abort the rest of the page, which separate requests
+    per widget used to prevent for free. */
+function renderWidget(label, render, onError) {
+    try {
+        render();
+    } catch (err) {
+        console.error(`Failed to render ${label}:`, err);
+        onError(err);
+    }
 }
 
 /* =========================================
@@ -248,6 +256,8 @@ function renderHorizontalBarChart(canvasId, rows, { labelKey, valueKey, colorMap
  *   paddingTop         - extra top padding (for datalabels above points)
  *   yTicksInThousands  - format left-axis ticks as "12k"
  *   moneyTooltip       - NT$ tooltip formatting for both datasets
+ *   tooltipLabel       - Chart.js label callback, when moneyTooltip's
+ *                        "total spent / price per kWh" wording doesn't fit
  */
 function renderBarLineChart(canvasId, config) {
     const { labels, bar, line } = config;
@@ -311,7 +321,12 @@ function renderBarLineChart(canvasId, config) {
     if (config.yTicksInThousands) {
         options.scales.y.ticks.callback = value => value / 1000 + "k";
     }
-    if (config.moneyTooltip) {
+    // tooltipLabel is the general form: a Chart.js label callback, for charts
+    // whose two axes aren't "total spent" and "price per kWh". moneyTooltip
+    // stays as the shorthand for the ones that are.
+    if (config.tooltipLabel) {
+        options.plugins.tooltip = { callbacks: { label: config.tooltipLabel } };
+    } else if (config.moneyTooltip) {
         options.plugins.tooltip = {
             callbacks: {
                 label: ctx => ctx.dataset.yAxisID === "y"

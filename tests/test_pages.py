@@ -6,6 +6,7 @@ that templates, Jinja globals, and the routes still line up.
 """
 
 import re
+from pathlib import Path
 
 import pytest
 
@@ -31,8 +32,36 @@ def test_dashboard_includes_all_charts(client):
         "chargingHistogram",
         "trendChart",
         "cumulativeCostChart",
+        "monthlyCostPerKmChart",
+        "monthlyEfficiencyChart",
     ):
         assert canvas_id in html, f"missing canvas #{canvas_id}"
+
+
+def test_dashboard_uses_the_custom_chart_bundle(client):
+    html = client.get("/mytesla/").text
+    assert "chart.custom.min.js" in html
+    assert "dashboard.min.js" in html
+    assert "tesla.min.js" in html
+    assert "chart.umd.min.js" not in html
+    assert "chartjs-plugin-datalabels.min.js" not in html
+    assert client.get("/static/js/vendor/chart.custom.min.js").status_code == 200
+
+
+def test_pages_serve_minified_site_assets(client):
+    html = client.get("/").text
+    assert "style.min.css" in html
+    assert "nav.min.js" in html
+    assert "static/css/style.css" not in html
+    assert "static/js/nav.js" not in html
+
+
+def test_pages_use_svg_favicon_and_keep_apple_touch_icon(client):
+    html = client.get("/").text
+    assert "images/favicon/favicon.svg" in html
+    assert "images/favicon/apple-touch-icon.png" in html
+    assert "favicon.ico" not in html
+    assert "web-app-manifest-192x192.png" not in html
 
 
 def test_dashboard_includes_period_and_coverage_controls(client):
@@ -47,10 +76,20 @@ def test_dashboard_includes_period_and_coverage_controls(client):
 
 def test_dashboard_calls_the_api_on_this_origin(client):
     """The merged service serves both halves, so the JS must stay relative."""
-    js = client.get("/static/js/tesla.js").text
+    js = Path("frontend/js/tesla.js").read_text()
     assert 'const API_BASE = "";' in js
     assert "api.jakewang.dev" not in js
     assert "data-api-base" not in client.get("/mytesla/").text
+
+
+def test_dashboard_loads_from_the_single_aggregate_endpoint(client):
+    """Page load must stay one request. Fetching a per-widget endpoint here
+    instead is the regression this guards: it silently costs another round
+    trip and another DB session per widget added back."""
+    js = Path("frontend/js/tesla.js").read_text()
+    fetched = re.findall(r"loadJSON\(`\$\{API_BASE\}(/api/[^`]+)`", js)
+    assert fetched == ["/api/tesla/dashboard"]
+    assert "loadChart(" not in js
 
 
 @pytest.mark.parametrize("path", PAGES)
@@ -81,7 +120,7 @@ class TestNoIndex:
     """
 
     @pytest.mark.parametrize(
-        "path", PAGES + ["/api/tesla/expenses/recent", "/static/css/style.css"]
+        "path", PAGES + ["/api/tesla/expenses/recent", "/static/css/style.min.css"]
     )
     def test_everything_is_noindex(self, client, path):
         tag = client.get(path).headers["X-Robots-Tag"]
@@ -128,14 +167,14 @@ class TestAssetPolicy:
         assert response.headers["Cache-Control"] == f"public, max-age={PAGE_CACHE_MAX_AGE}"
 
     def test_static_files_get_long_max_age(self, client):
-        response = client.get("/static/css/style.css")
+        response = client.get("/static/css/style.min.css")
         assert response.status_code == 200
         assert f"max-age={STATIC_CACHE_MAX_AGE}" in response.headers["Cache-Control"]
 
     def test_pages_version_static_asset_urls(self, client):
         # The ?v= cache-buster is what makes the long max-age safe to serve.
         html = client.get("/").text
-        assert re.search(r"/static/css/style\.css\?v=\d+", html)
+        assert re.search(r"/static/css/style\.min\.css\?v=\d+", html)
 
     def test_missing_asset_versions_to_zero(self):
         from app.main import static_url
@@ -144,7 +183,7 @@ class TestAssetPolicy:
 
 
 @pytest.mark.parametrize(
-    "path", PAGES + ["/api/tesla/expenses/recent", "/static/css/style.css"]
+    "path", PAGES + ["/api/tesla/expenses/recent", "/static/css/style.min.css"]
 )
 def test_security_headers_on_everything(client, path):
     """Pages, API and static assets all go through the same middleware."""

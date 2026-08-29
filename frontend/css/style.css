@@ -1,4 +1,4 @@
-/* style.css — the single stylesheet for the whole site (blog + dashboards).
+/* The single stylesheet for the whole site.
 
    Organized into the numbered sections below. All colors and the mono font
    stack live in the :root custom properties, so restyling means editing one

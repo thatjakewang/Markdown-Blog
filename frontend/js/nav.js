@@ -1,4 +1,4 @@
-/* nav.js — mobile hamburger menu for the site header (loaded with defer). */
+/* Mobile hamburger menu for the site header (loaded with defer). */
 (function () {
     var header = document.querySelector(".site-header");
     var toggle = document.querySelector(".nav-toggle");

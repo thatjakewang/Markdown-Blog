@@ -17,12 +17,11 @@
     {# Also sent as an X-Robots-Tag header (app/main.py); the tag is here too
        because it is what most crawlers and audit tools look at first. #}
     <meta name="robots" content="noindex, nofollow">
-    <link rel="stylesheet" href="{{ static_url('css/style.css') }}">
+    <link rel="stylesheet" href="{{ static_url('css/style.min.css') }}">
     <title>{% block title %}{{ meta_title | default('Jake Wang') }}{% endblock %}</title>
-    <script src="{{ static_url('js/nav.js') }}" defer></script>
+    <script src="{{ static_url('js/nav.min.js') }}" defer></script>
     {% block extra_head %}{% endblock %}
-    <link rel="icon" type="image/png" sizes="192x192" href="{{ static_url('images/favicon/web-app-manifest-192x192.png') }}">
-    <link rel="icon" type="image/x-icon" href="{{ static_url('images/favicon/favicon.ico') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ static_url('images/favicon/favicon.svg') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ static_url('images/favicon/apple-touch-icon.png') }}">
 </head>
 <body>

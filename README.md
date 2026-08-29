@@ -70,14 +70,17 @@ app/
   utils.py         # row serialization, response envelope, date helpers
   routers/         # thin HTTP route handlers (tesla, auth)
 templates/         # Jinja page shells (base + home + dashboard + login + errors)
-static/            # CSS, JS (dashboard builders + data loaders), favicons
+frontend/          # Readable JS/CSS sources and the custom Chart.js entry point
+static/            # Generated browser assets and favicons
 tests/             # pytest suite (no real DB)
 schema.sql         # reference DDL for rebuilding the database
 ```
 
 The dashboard is rendered client-side: `templates/tesla.html` only lays out empty
-`<canvas>` slots, and `static/js/tesla.js` fetches every number from `/api/tesla/*`
-on this same origin. Nothing needs a redeploy when new records land.
+`<canvas>` slots, and the generated `static/js/tesla.min.js` fetches every number from
+`/api/tesla/dashboard` on this same origin — one request carrying every widget's
+payload, served from a single DB session. Nothing needs a redeploy when new
+records land.
 
 ## Environment Variables
 
@@ -115,14 +118,42 @@ The site is then at **http://localhost:8000** and the API under `/api/`.
 Interactive API docs (`/docs`, `/redoc`, `/openapi.json`) are disabled on purpose —
 see `app/main.py`. Use the endpoint tables below as the reference.
 
-Dependencies: `requirements.txt` lists top-level packages; `requirements.lock` is the
-fully pinned set generated with `uv pip compile requirements.txt -o requirements.lock`.
-Re-generate the lock after changing `requirements.txt`.
+Dependencies: `requirements.txt` and `requirements-dev.txt` list top-level packages;
+the `.lock` files beside them are the fully pinned sets that actually get installed.
+Re-generate both, in this order, after changing either:
+
+```bash
+uv pip compile requirements.txt -o requirements.lock
+uv pip compile requirements-dev.txt -c requirements.lock -o requirements-dev.lock
+```
+
+The `-c` flag constrains every shared package to the version `requirements.lock`
+deploys, so the only difference between the two locks is the test-only tree —
+tests never run against a different dependency set than production.
+
+### Frontend assets
+
+The generated `static/js/vendor/chart.custom.min.js` contains only the Chart.js
+controllers, elements, scales, and plugins used by the Tesla dashboard. It also
+includes `chartjs-plugin-datalabels`, so the page loads one chart dependency
+instead of the two full vendor distributions. The readable site JavaScript and
+CSS live in `frontend/`; esbuild generates the `.min.js` and `.min.css` files the
+templates serve. Generated files are committed, so production does not need
+Node.js. Rebuild after changing any frontend source:
+
+```bash
+npm ci
+npm run build
+```
+
+Edit `frontend/chart-entry.js` when a chart starts using a new Chart.js component,
+then rebuild and commit the generated bundle. Do not import `chart.js/auto`, which
+would register every component and defeat tree-shaking.
 
 ## Tests
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements-dev.lock
 python -m pytest tests/
 ```
 
@@ -180,6 +211,7 @@ psql "$DATABASE_URL" -c "SELECT conrelid::regclass AS tbl, conname
 | GET | `/login` | Sign-in page (303 to `?next=` if already signed in) |
 | POST | `/login` | Form login — `password`, optional `next`. Rate limited 5/min |
 | POST | `/logout` | Clear the session (POST only, so no link can sign you out) |
+| GET | `/api/tesla/dashboard` | Every payload below in one response — what the dashboard page fetches |
 | GET | `/api/tesla/stats` | Total cost, charging cost, cost per km |
 | GET | `/api/tesla/period-summary` | This month, comparable prior month, and trailing-90-day KPIs |
 | GET | `/api/tesla/data-coverage` | Collection start dates and latest recorded activity |
@@ -267,7 +299,7 @@ automatically follows the latest reading.
 | Path | Description |
 |------|-------------|
 | `/` | Home — intro, project cards, skills |
-| `/mytesla/` | Tesla cost dashboard (fetches `/api/tesla/*` client-side) |
+| `/mytesla/` | Tesla cost dashboard (fetches `/api/tesla/dashboard` client-side) |
 | `/login` | Sign-in (see Authentication above) |
 
 ## Caching

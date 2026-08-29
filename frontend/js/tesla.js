@@ -1,12 +1,35 @@
-/* tesla.js — data loaders for the Tesla cost dashboard (templates/tesla.html).
-   Uses the shared builders in dashboard.js; loaded with defer after Chart.js,
-   the datalabels plugin, and dashboard.js. The API is served from this same
-   origin, so every URL below is root-relative. */
+/* Data loaders for the Tesla cost dashboard (templates/tesla.html).
+   Uses the shared builders in dashboard.js; loaded with defer after the custom
+   Chart.js bundle and dashboard.js. The API is served from this same
+   origin, so every URL below is root-relative.
+
+   The whole page comes from ONE request: /api/tesla/dashboard returns what the
+   ten per-widget endpoints (/stats, /expenses, /charging/providers, …) return,
+   under keys named after them, so page load costs one HTTP round trip, one DB
+   session, and one cacheable response instead of ten of each. Each widget is
+   still drawn by its own function, wrapped in renderWidget so one bad payload
+   can't blank the rest of the page. Those endpoints all still exist for
+   anything that wants a single slice. */
 
 const API_BASE = "";
 
+const formatDate = value => value || "No records";
+const formatMetric = (value, suffix = "") =>
+    value == null ? "Not enough data" : `${value.toLocaleString()}${suffix}`;
+const formatMoney = value => value == null ? "Not enough data" : `NT$ ${value}`;
+
+/* =========================================
+   Widgets — each takes its slice of the payload
+   ========================================= */
+
 // KPI cards
-loadJSON(`${API_BASE}/api/tesla/stats`, "Tesla stats", data => {
+const STAT_KPI_IDS = [
+    "total-cost", "odometer-km", "cost-per-km",
+    "charging-cost-per-km", "non-charging-cost-per-km",
+    "charging-cost", "non-charging-cost", "avg-price"
+];
+
+function renderStats(data) {
     setText("total-cost", `NT$ ${data.total_cost.toLocaleString()}`);
     setText("odometer-km", `${data.odometer_km.toLocaleString()} km`);
     setText("cost-per-km", `NT$ ${data.cost_per_km}`);
@@ -15,37 +38,36 @@ loadJSON(`${API_BASE}/api/tesla/stats`, "Tesla stats", data => {
     setText("charging-cost", `NT$ ${data.charging_cost.toLocaleString()}`);
     setText("non-charging-cost", `NT$ ${data.non_charging_cost.toLocaleString()}`);
     setText("avg-price", `NT$ ${data.avg_price_per_kwh}`);
-}, () => setKpiErrors([
-    "total-cost", "odometer-km", "cost-per-km",
-    "charging-cost-per-km", "non-charging-cost-per-km",
-    "charging-cost", "non-charging-cost", "avg-price"
-]));
-
-const formatDate = value => value || "No records";
-const formatMetric = (value, suffix = "") =>
-    value == null ? "Not enough data" : `${value.toLocaleString()}${suffix}`;
+}
 
 // Collection windows make null efficiency values understandable at a glance.
-loadJSON(`${API_BASE}/api/tesla/data-coverage`, "data coverage", data => {
+function renderDataCoverage(data) {
     setText("data-updated", `Data last updated ${formatDate(data.last_updated)}`);
     setText("coverage-charging", `Since ${formatDate(data.charging_start_date)}`);
     setText("coverage-expenses", `Since ${formatDate(data.expenses_start_date)}`);
     setText("coverage-odometer", `Since ${formatDate(data.odometer_start_date)}`);
-}, () => {
+}
+
+function showCoverageError() {
     setText("data-updated", "Latest update unavailable");
     ["coverage-charging", "coverage-expenses", "coverage-odometer"]
         .forEach(id => setText(id, "Unavailable"));
-});
+}
 
 // This-month and rolling-90-day KPIs share one payload and switch instantly.
-loadJSON(`${API_BASE}/api/tesla/period-summary`, "period performance", periods => {
+const PERIOD_KPI_IDS = [
+    "period-total-cost", "period-km", "period-energy-cost-km",
+    "period-total-cost-km", "period-efficiency", "period-change"
+];
+
+function renderPeriodSummary(periods) {
     const renderPeriod = key => {
         const data = periods[key];
         setText("period-range", `${data.start_date} to ${data.end_date}${data.is_partial ? " · partial period" : ""}`);
         setText("period-total-cost", `NT$ ${data.total_cost.toLocaleString()}`);
         setText("period-km", formatMetric(data.km_driven, " km"));
-        setText("period-energy-cost-km", data.energy_cost_per_km == null ? "Not enough data" : `NT$ ${data.energy_cost_per_km}`);
-        setText("period-total-cost-km", data.total_cost_per_km == null ? "Not enough data" : `NT$ ${data.total_cost_per_km}`);
+        setText("period-energy-cost-km", formatMoney(data.energy_cost_per_km));
+        setText("period-total-cost-km", formatMoney(data.total_cost_per_km));
         setText("period-efficiency", formatMetric(data.kwh_per_100km, " kWh"));
         const change = key === "current_month" ? data.cost_per_km_change_pct : null;
         setText("period-change", change == null ? "Not comparable" : `${change > 0 ? "+" : ""}${change}%`);
@@ -59,23 +81,19 @@ loadJSON(`${API_BASE}/api/tesla/period-summary`, "period performance", periods =
             renderPeriod(button.dataset.period);
         });
     });
-}, () => setKpiErrors([
-    "period-total-cost", "period-km", "period-energy-cost-km",
-    "period-total-cost-km", "period-efficiency", "period-change"
-]));
+}
 
 // Spending by category (all-time)
-loadChart(`${API_BASE}/api/tesla/expenses`, "costBreakdownChart",
-    "Failed to load spending breakdown", data =>
+function renderExpenseBreakdown(data) {
     renderHorizontalBarChart("costBreakdownChart", data, {
         labelKey: "item",
         valueKey: "total_amount",
         colorMap: EXPENSE_ITEM_COLORS
-    }));
+    });
+}
 
 // Charging by provider
-loadChart(`${API_BASE}/api/tesla/charging/providers`, "providerChart",
-    "Failed to load charging provider data", data => {
+function renderProviders(data) {
     const labels = data.map(row => row.provider);
 
     renderBarLineChart("providerChart", {
@@ -133,11 +151,11 @@ loadChart(`${API_BASE}/api/tesla/charging/providers`, "providerChart",
             { value: `${row.free_kwh.toLocaleString()} kWh (${row.free_sessions})`, cls: "col-amount" },
         ]
     );
-});
+}
 
-// Per-session charging data: fetched once, feeds both the scatter chart
-// (kWh x cost, colored by provider) and the distribution histogram below.
-loadJSON(`${API_BASE}/api/tesla/charging/sessions`, "charging sessions", sessions => {
+// Per-session charging data feeds both the scatter chart (kWh x cost, colored
+// by provider) and the distribution histogram below.
+function renderChargingSessions(sessions) {
     renderScatterChart("chargingScatterChart", sessions, {
         xKey: "kwh",
         yKey: "amount",
@@ -187,14 +205,10 @@ loadJSON(`${API_BASE}/api/tesla/charging/sessions`, "charging sessions", session
     draw("amount");
     document.getElementById("histogramMetric")
         .addEventListener("change", e => draw(e.target.value));
-}, () => {
-    showError("chargingScatterChart", "Failed to load charging session data");
-    showError("chargingHistogram", "Failed to load charging session data");
-});
+}
 
 // Monthly charging trend
-loadChart(`${API_BASE}/api/tesla/charging/monthly-trend`, "trendChart",
-    "Failed to load monthly trend data", data =>
+function renderChargingTrend(data) {
     renderBarLineChart("trendChart", {
         labels: data.map(row => row.month),
         bar: {
@@ -208,11 +222,15 @@ loadChart(`${API_BASE}/api/tesla/charging/monthly-trend`, "trendChart",
         },
         yTitle: "Monthly Spending (NTD)",
         y1Title: "NTD / kWh"
-    }));
+    });
+}
 
-/* /monthly-summary feeds the cumulative cost chart: a running total of each
-   month's total_cost = total cost of ownership over time. */
-loadJSON(`${API_BASE}/api/tesla/monthly-summary`, "cumulative cost chart", data => {
+/* /monthly-summary feeds three charts: a running total of each month's
+   total_cost (= total cost of ownership over time), plus the per-km cost and
+   efficiency the backend derives from the odometer deltas. Months with no
+   odometer reading to difference against carry nulls, which Chart.js draws as
+   gaps in the line rather than as zeroes. */
+function renderCumulativeCost(data) {
     let runningTotal = 0;
     renderLineChart("cumulativeCostChart", {
         labels: data.map(row => row.month),
@@ -220,10 +238,42 @@ loadJSON(`${API_BASE}/api/tesla/monthly-summary`, "cumulative cost chart", data 
         data: data.map(row => (runningTotal += row.total_cost)),
         formatValue: v => `NT$ ${v.toLocaleString()}`
     });
-}, () => showError("cumulativeCostChart", "Failed to load cumulative cost data"));
+}
+
+function renderMonthlyCostPerKm(data) {
+    renderBarLineChart("monthlyCostPerKmChart", {
+        labels: data.map(row => row.month),
+        bar: {
+            label: "Distance Driven (km)",
+            data: data.map(row => row.km_driven),
+            colors: "rgba(59, 130, 246, 0.7)"
+        },
+        line: {
+            label: "Total Cost (NTD/km)",
+            data: data.map(row => row.cost_per_km)
+        },
+        yTitle: "km Driven",
+        y1Title: "NTD / km",
+        // Index-mode tooltips include months a dataset has no value for.
+        tooltipLabel: ctx => ctx.parsed.y == null
+            ? ""
+            : ctx.dataset.yAxisID === "y"
+                ? ` Driven: ${ctx.parsed.y.toLocaleString()} km`
+                : ` Cost: NT$ ${ctx.parsed.y.toFixed(2)} / km`
+    });
+}
+
+function renderMonthlyEfficiency(data) {
+    renderLineChart("monthlyEfficiencyChart", {
+        labels: data.map(row => row.month),
+        label: "Efficiency",
+        data: data.map(row => row.kwh_per_100km),
+        formatValue: v => `${v} kWh`
+    });
+}
 
 // Recent charging sessions table
-loadJSON(`${API_BASE}/api/tesla/charging/recent`, "recent charging", data => {
+function renderRecentCharging(data) {
     if (!data || data.length === 0) {
         setText("recent-charging", "No charging records yet.");
         return;
@@ -247,10 +297,10 @@ loadJSON(`${API_BASE}/api/tesla/charging/recent`, "recent charging", data => {
     );
 
     setText("recent-charging-meta", `${data.length} latest charge${plural(data.length)}`);
-}, () => showError("recent-charging", "Failed to load recent charges"));
+}
 
 // Recent car expenses table
-loadJSON(`${API_BASE}/api/tesla/expenses/recent`, "recent car expenses", data => {
+function renderRecentExpenses(data) {
     if (!data || data.length === 0) {
         setText("recent-car-expenses", "No car expense records yet.");
         return;
@@ -272,4 +322,46 @@ loadJSON(`${API_BASE}/api/tesla/expenses/recent`, "recent car expenses", data =>
     );
 
     setText("recent-expenses-meta", `${data.length} latest record${plural(data.length)}`);
-}, () => showError("recent-car-expenses", "Failed to load recent expenses"));
+}
+
+/* =========================================
+   The one request that draws the page
+   ========================================= */
+
+/* Widget name -> [payload key, renderer, failure handler]. The failure handler
+   runs when the request fails (every widget) or when that one renderer throws
+   (just that widget), so a broken slice degrades to an in-place error message
+   instead of an empty card. */
+const WIDGETS = [
+    ["Tesla stats", "stats", renderStats,
+        () => setKpiErrors(STAT_KPI_IDS)],
+    ["data coverage", "data_coverage", renderDataCoverage,
+        showCoverageError],
+    ["period performance", "period_summary", renderPeriodSummary,
+        () => setKpiErrors(PERIOD_KPI_IDS)],
+    ["spending breakdown", "expenses", renderExpenseBreakdown,
+        () => showError("costBreakdownChart", "Failed to load spending breakdown")],
+    ["charging provider data", "charging_providers", renderProviders,
+        () => showError("providerChart", "Failed to load charging provider data")],
+    ["charging sessions", "charging_sessions", renderChargingSessions, () => {
+        showError("chargingScatterChart", "Failed to load charging session data");
+        showError("chargingHistogram", "Failed to load charging session data");
+    }],
+    ["monthly trend data", "charging_monthly_trend", renderChargingTrend,
+        () => showError("trendChart", "Failed to load monthly trend data")],
+    ["cumulative cost chart", "monthly_summary", renderCumulativeCost,
+        () => showError("cumulativeCostChart", "Failed to load cumulative cost data")],
+    ["monthly cost per km", "monthly_summary", renderMonthlyCostPerKm,
+        () => showError("monthlyCostPerKmChart", "Failed to load monthly cost per km")],
+    ["monthly efficiency", "monthly_summary", renderMonthlyEfficiency,
+        () => showError("monthlyEfficiencyChart", "Failed to load monthly efficiency")],
+    ["recent charging", "recent_charging", renderRecentCharging,
+        () => showError("recent-charging", "Failed to load recent charges")],
+    ["recent car expenses", "recent_expenses", renderRecentExpenses,
+        () => showError("recent-car-expenses", "Failed to load recent expenses")],
+];
+
+loadJSON(`${API_BASE}/api/tesla/dashboard`, "Tesla dashboard",
+    payload => WIDGETS.forEach(([label, key, render, onError]) =>
+        renderWidget(label, () => render(payload[key]), onError)),
+    () => WIDGETS.forEach(([, , , onError]) => onError()));
